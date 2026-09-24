@@ -3,212 +3,29 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Para ti 💛</title>
+<title>Nuestro Libro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --tinta:      #f0e2c8;
-    --tinta-suave:#c9b48e;
-    --acento:     #d9a86c;
-    --fondo-1:    #241c17;
-    --fondo-2:    #0c0907;
-  }
-
-  html, body { height: 100%; }
-
-  body {
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    overflow: hidden;
-    background: radial-gradient(circle at 50% 20%, var(--fondo-1), var(--fondo-2) 70%);
-    font-family: "Cormorant Garamond", Georgia, serif;
-    color: var(--tinta);
-    position: relative;
-  }
-
-  /* ---- Emojis cayendo (mismo efecto que en el libro) ---- */
-  .decoraciones {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 0;
-  }
-  .deco-item {
-    position: absolute;
-    top: -80px;
-    user-select: none;
-    will-change: transform;
-    animation: caer linear infinite;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,.5));
-  }
-  @keyframes caer {
-    0%   { transform: translate(0, -80px) rotate(0deg); }
-    100% { transform: translate(var(--deriva, 0px), 110vh) rotate(360deg); }
-  }
-
-  /* ---- Tarjeta central ---- */
-  .tarjeta {
-    position: relative;
-    z-index: 2;
-    max-width: 520px;
-    width: 100%;
-    padding: clamp(36px, 6vw, 60px) clamp(28px, 5vw, 48px);
-    text-align: center;
-    background: linear-gradient(160deg, rgba(87,57,42,.55), rgba(46,28,19,.75));
-    border: 1px solid rgba(217,168,108,.3);
-    border-radius: 6px;
-    box-shadow:
-      0 30px 60px rgba(0,0,0,.55),
-      inset 0 0 0 1px rgba(255,255,255,.04);
-    backdrop-filter: blur(6px);
-    animation: aparecer 1.2s cubic-bezier(.2,.7,.3,1) both;
-  }
-
-  @keyframes aparecer {
-    from { opacity: 0; transform: translateY(20px) scale(.98); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  .sobre {
-    font-size: clamp(2.6rem, 7vw, 3.6rem);
-    line-height: 1;
-    margin-bottom: 14px;
-    animation: latir 2.4s ease-in-out infinite;
-  }
-  @keyframes latir {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.12); }
-  }
-
-  .para {
-    font-family: "Caveat", cursive;
-    font-size: clamp(1.4rem, 3.2vw, 1.7rem);
-    color: var(--acento);
-    letter-spacing: .5px;
-    margin-bottom: 4px;
-  }
-
-  h1 {
-    font-family: "Playfair Display", Georgia, serif;
-    font-weight: 700;
-    font-size: clamp(2rem, 5.5vw, 2.8rem);
-    line-height: 1.15;
-    margin-bottom: 18px;
-    color: var(--tinta);
-  }
-
-  .frase {
-    font-style: italic;
-    font-size: clamp(1rem, 2.2vw, 1.12rem);
-    line-height: 1.7;
-    color: var(--tinta-suave);
-    margin-bottom: 34px;
-    max-width: 380px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  /* ---- Botón ---- */
-  .btn-abrir {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 32px;
-    font-family: "Cormorant Garamond", serif;
-    font-size: 1.1rem;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    text-decoration: none;
-    color: #2a1d12;
-    background: linear-gradient(135deg, #e0b87e, #c9985a);
-    border: none;
-    border-radius: 40px;
-    cursor: pointer;
-    box-shadow:
-      0 10px 26px rgba(200,140,80,.35),
-      inset 0 1px 0 rgba(255,255,255,.4);
-    transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
-  }
-  .btn-abrir:hover {
-    transform: translateY(-2px);
-    box-shadow:
-      0 16px 34px rgba(200,140,80,.5),
-      inset 0 1px 0 rgba(255,255,255,.5);
-    filter: brightness(1.05);
-  }
-  .btn-abrir:active { transform: translateY(0); }
-
-  .btn-abrir .flecha {
-    transition: transform .25s ease;
-    font-size: 1.1em;
-  }
-  .btn-abrir:hover .flecha { transform: translateX(4px); }
-
-  .pie {
-    margin-top: 28px;
-    font-family: "Caveat", cursive;
-    font-size: 1.15rem;
-    color: rgba(217,168,108,.6);
-  }
-
-  @media (max-width: 480px) {
-    .tarjeta { padding: 32px 22px; }
-    .frase   { margin-bottom: 26px; }
-  }
-</style>
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- Emojis cayendo -->
-  <div class="decoraciones" id="deco" aria-hidden="true"></div>
+<main class="escenario">
+  <div class="decoraciones" aria-hidden="true"></div>
+  <div class="libro" id="libro"></div>
 
-  <!-- Tarjeta central -->
-  <main class="tarjeta">
-    <div class="sobre">💌</div>
-    <p class="para">Para ti, mi amor</p>
-    <h1>Nuestra Historia</h1>
-    <p class="frase">
-      Cada hoja guarda un momento, una risa, un lugar.
-      Un libro hecho a mano, solo para ti.
-    </p>
+  <div class="controles">
+    <button id="atras" aria-label="Página anterior">‹</button>
+    <span id="contador" class="contador"></span>
+    <button id="adelante" aria-label="Página siguiente">›</button>
+  </div>
 
-    <a href="./nuestro-libro/" class="btn-abrir">
-      Abrir nuestro libro
-      <span class="flecha">→</span>
-    </a>
+  <p class="pista">Usa ← → o desliza</p>
+</main>
 
-    <p class="pie">Hecho con mucho amor 🤎</p>
-  </main>
-
-  <script>
-    // Emojis cayendo
-    (function () {
-      const EMOJIS = ["🤎", "🐵", "🤎", "🐒", "✨", "🤎"];
-      const cont = document.getElementById("deco");
-      const cantidad = window.innerWidth < 700 ? 14 : 30;
-
-      for (let i = 0; i < cantidad; i++) {
-        const el = document.createElement("span");
-        el.className = "deco-item";
-        el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-        el.style.fontSize = (18 + Math.random() * 30) + "px";
-        el.style.left     = Math.random() * 100 + "%";
-        el.style.opacity  = (0.3 + Math.random() * 0.5).toFixed(2);
-
-        const duracion = 9 + Math.random() * 12;
-        el.style.animationDuration = duracion + "s";
-        el.style.animationDelay    = (-Math.random() * duracion) + "s";
-        el.style.setProperty("--deriva", ((Math.random() - 0.5) * 120) + "px");
-
-        cont.appendChild(el);
-      }
-    })();
-  </script>
+<script src="recuerdos.js"></script>
+<script src="script.js"></script>
+<script src="decoraciones.js"></script>
 </body>
 </html>
