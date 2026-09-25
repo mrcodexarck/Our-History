@@ -100,11 +100,8 @@
   }
 
   /* ---- Input ---- */
-  .campo {
-    display: flex; gap: 8px;
-    margin-bottom: 14px;
-  }
-  input[type="password"], input[type="text"] {
+  .campo { display: flex; gap: 8px; margin-bottom: 14px; }
+  input[type="password"] {
     flex: 1;
     padding: 14px 18px;
     font-family: "Cormorant Garamond", serif;
@@ -201,51 +198,26 @@
 </main>
 
 <script>
-/* ================================================================
-   CONFIGURACIÓN
-   ----------------------------------------------------------------
-   1) Cambia HASH_CLAVE por el hash SHA-256 de tu palabra secreta.
-   2) Cambia PISTA por una pista que solo ella entienda (opcional).
-   3) Cambia IR_A por la ruta del libro (ya está bien por defecto).
+/* ============================================================
+   ✏️  CONFIGURACIÓN — SOLO TOCA ESTA PARTE
+   ============================================================ */
 
-   Para generar el hash de tu palabra:
-   - Abre esta página en el navegador
-   - Presiona F12 → pestaña Console
-   - Escribe:  generarHash("tu-palabra-secreta")
-   - Copia el resultado (sin comillas) y pégalo abajo
-================================================================ */
+// 👇 CAMBIA ESTO POR TU PALABRA SECRETA (todo en minúsculas)
+const CLAVE = "nuestroamor";
 
-const CLAVE = "teamo";     // ← cambia esto
-const PISTA      = "Pista: cómo me llamas tú 🤎";  // ← opcional, "" para no mostrar
-const IR_A       = "./nuestro-libro/";       // dónde entra si acierta
-const CLAVE_SESION = "acceso-libro";         // no la cambies
+// 👇 RUTA DEL LIBRO (déjala así, ya está bien)
+const IR_A = "./nuestro-libro/";
 
-/* ================================================================
-   Lógica (no necesitas tocar nada de aquí para abajo)
-================================================================ */
+// 👇 PISTA OPCIONAL (escribe "" si no quieres pista)
+const PISTA = "Pista: cómo me llamas tú 🤎";
+
+/* ============================================================
+   De aquí para abajo no toques nada
+   ============================================================ */
 
 // Si ya entró antes en esta sesión, pasa directo
-if (sessionStorage.getItem(CLAVE_SESION) === "ok") {
+if (sessionStorage.getItem("acceso-libro") === "ok") {
   location.replace(IR_A);
-}
-
-// Función para generar el hash desde la consola del navegador
-window.generarHash = async function (texto) {
-  const buf = new TextEncoder().encode(texto);
-  const hash = await crypto.subtle.digest("SHA-256", buf);
-  const hex = [...new Uint8Array(hash)]
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-  console.log("%cHash generado:", "color:#d9a86c;font-weight:bold", hex);
-  return hex;
-};
-
-async function sha256(texto) {
-  const buf = new TextEncoder().encode(texto);
-  const hash = await crypto.subtle.digest("SHA-256", buf);
-  return [...new Uint8Array(hash)]
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 const form    = document.getElementById("form");
@@ -257,15 +229,8 @@ const pistaEl = document.getElementById("pista");
 
 if (PISTA) pistaEl.textContent = PISTA;
 
-// Detecta si aún no configuró el hash
-if (HASH_CLAVE === "PEGA_AQUI_TU_HASH") {
-  errorEl.textContent = "⚠️ Falta configurar HASH_CLAVE en el código";
-  errorEl.classList.add("visible");
-}
-
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (HASH_CLAVE === "PEGA_AQUI_TU_HASH") return;
 
   const intento = input.value.trim().toLowerCase();
   if (!intento) return;
@@ -273,13 +238,11 @@ form.addEventListener("submit", async (e) => {
   btn.disabled = true;
   errorEl.classList.remove("visible");
 
-  const hash = await sha256(intento);
-
   // pequeño delay para dar sensación de "comprobando"
   await new Promise(r => setTimeout(r, 350));
 
-  if (hash === HASH_CLAVE) {
-    sessionStorage.setItem(CLAVE_SESION, "ok");
+  if (intento === CLAVE.toLowerCase()) {
+    sessionStorage.setItem("acceso-libro", "ok");
     errorEl.style.color = "#9fd8a0";
     errorEl.textContent = "Abriendo nuestro libro… 🤎";
     errorEl.classList.add("visible");
@@ -288,8 +251,8 @@ form.addEventListener("submit", async (e) => {
     btn.disabled = false;
     input.value = "";
     input.focus();
-    errorEl.textContent = "Mmm… esa no es. Intenta otra vez 🤎";
     errorEl.style.color = "#e88a7a";
+    errorEl.textContent = "Mmm… esa no es. Intenta otra vez 🤎";
     errorEl.classList.add("visible");
 
     tarjeta.classList.remove("error");
@@ -303,6 +266,7 @@ form.addEventListener("submit", async (e) => {
   const EMOJIS = ["🤎", "🐵", "🤎", "🐒", "✨", "🔒"];
   const cont = document.getElementById("deco");
   const cantidad = window.innerWidth < 700 ? 14 : 30;
+
   for (let i = 0; i < cantidad; i++) {
     const el = document.createElement("span");
     el.className = "deco-item";
@@ -310,10 +274,12 @@ form.addEventListener("submit", async (e) => {
     el.style.fontSize = (18 + Math.random() * 30) + "px";
     el.style.left     = Math.random() * 100 + "%";
     el.style.opacity  = (0.3 + Math.random() * 0.5).toFixed(2);
+
     const duracion = 9 + Math.random() * 12;
     el.style.animationDuration = duracion + "s";
     el.style.animationDelay    = (-Math.random() * duracion) + "s";
     el.style.setProperty("--deriva", ((Math.random() - 0.5) * 120) + "px");
+
     cont.appendChild(el);
   }
 })();
