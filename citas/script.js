@@ -3,6 +3,8 @@ const contador     = document.getElementById("contador");
 const barra        = document.getElementById("barra");
 const inputBuscar  = document.getElementById("busqueda");
 const selectFiltro = document.getElementById("filtro");
+const selectEstado = document.getElementById("filtro-estado");
+
 
 const CLAVE_STORAGE = "citas-hechas";
 let hechas = JSON.parse(localStorage.getItem(CLAVE_STORAGE) || "{}");
@@ -117,15 +119,28 @@ function aplicarFiltros() {
 inputBuscar.addEventListener("input", aplicarFiltros);
 selectFiltro.addEventListener("change", aplicarFiltros);
 
-/* --- Botones de estado --- */
-document.querySelectorAll(".estado-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".estado-btn").forEach(b => b.classList.remove("activo"));
-    btn.classList.add("activo");
-    estadoActual = btn.dataset.estado;
-    aplicarFiltros();
-  });
+/* Filtro de estado (dropdown) */
+const selectEstado = document.getElementById("filtro-estado");
+selectEstado.addEventListener("change", () => {
+  estadoActual = selectEstado.value;
+  aplicarFiltros();
 });
 
 inputBuscar.addEventListener("input", aplicarFiltros);
 selectFiltro.addEventListener("change", aplicarFiltros);
+
+/* ============================================================
+   API pública para la ruleta
+============================================================ */
+window.CitasApp = {
+  getIdeas: () => IDEAS,
+  estaHecha: (id) => hechas[id] === true,
+  marcarHecha: (id) => {
+    hechas[id] = true;
+    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+    actualizarProgreso();
+    const item = document.querySelector(`.item[data-id="${id}"]`);
+    if (item) item.classList.add("hecho");
+    if (typeof guardarHechas === "function") guardarHechas();
+  }
+};

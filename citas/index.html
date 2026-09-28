@@ -6,6 +6,7 @@
 <title>200 Cosas Por Hacer Juntos 💛</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Caveat:wght@500;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="ruleta.css" />
 </head>
 <body>
 
@@ -13,7 +14,7 @@
 
 <header class="encabezado">
   <div class="banner">
-    <h1>200 Cosas y Planes para Hacer juntos</h1>
+    <h1>200 Cosas y Planes para Hacer en Pareja</h1>
     <p class="subtitulo">Al menos una vez en la vida 🤎</p>
   </div>
 
@@ -27,15 +28,26 @@
       <span class="lupa">🔍</span>
       <input type="text" id="busqueda" placeholder="Buscar un plan…" autocomplete="off" />
     </div>
-    <select id="filtro">
+    <select id="filtro" class="filtro-select">
       <option value="">Todas las categorías</option>
     </select>
+    <select id="filtro-estado" class="filtro-select">
+      <option value="todas">Todas las actividades</option>
+      <option value="pendientes">Solo pendientes</option>
+      <option value="completadas">Solo completadas</option>
+    </select>
   </div>
+  
+<select id="filtro-estado" class="filtro-select">
+    <option value="todas">Todas las actividades</option>
+    <option value="pendientes">Solo pendientes</option>
+    <option value="completadas">Solo completadas</option>
+  </select>
 
-  <div class="estados">
-    <button class="estado-btn activo" data-estado="todas">Todas</button>
-    <button class="estado-btn" data-estado="pendientes">Pendientes</button>
-    <button class="estado-btn" data-estado="completadas">Completadas</button>
+  <div class="acciones-ruleta">
+    <button type="button" id="btn-ruleta" class="btn-ruleta">
+      🎡 Girar la ruleta
+    </button>
   </div>
 </header>
 
@@ -43,7 +55,75 @@
 
 <p class="pie">Hecho con mucho amor 🤎</p>
 
+<!-- ============================================================
+     MODAL DE LA RULETA
+============================================================ -->
+<div class="ruleta-modal" id="ruleta-modal">
+  <div class="ruleta-overlay"></div>
+
+  <div class="ruleta-contenido">
+    <button type="button" class="ruleta-cerrar" id="ruleta-cerrar" aria-label="Cerrar">✕</button>
+
+    <h2 class="ruleta-titulo">Ruleta de Planes</h2>
+    <p class="ruleta-sub">Deja que el destino decida por ustedes 🤎</p>
+
+    <div class="ruleta-panel">
+      <div class="ruleta-contenedor">
+        <div class="ruleta-puntero"></div>
+        <div class="ruleta-rueda" id="ruleta-rueda">
+          <svg id="ruleta-svg" viewBox="-150 -150 300 300"></svg>
+        </div>
+        <button type="button" class="ruleta-centro" id="ruleta-girar-btn">GIRAR</button>
+      </div>
+
+      <div class="ruleta-acciones">
+        <button type="button" id="ruleta-random">🎲 Rellenar al azar</button>
+        <button type="button" id="ruleta-personalizar">✏️ Personalizar</button>
+        <button type="button" id="ruleta-limpiar">🗑️ Limpiar</button>
+      </div>
+
+      <div class="ruleta-lista" id="ruleta-lista"></div>
+    </div>
+  </div>
+
+  <!-- Panel de personalizar -->
+  <div class="personalizar-panel" id="ruleta-personalizar-panel">
+    <div class="personalizar-card">
+      <button type="button" class="personalizar-cerrar" id="personalizar-cancelar">✕</button>
+      <h3>Elige qué planes van en la ruleta</h3>
+      <p class="personalizar-sub">
+        <span id="personalizar-contador">0 / 8</span> seleccionados
+      </p>
+
+      <input type="text" id="personalizar-buscar" placeholder="Buscar un plan…" />
+
+      <div class="personalizar-lista" id="personalizar-lista"></div>
+
+      <button type="button" class="personalizar-aplicar" id="personalizar-aplicar" disabled>
+        Aplicar (0)
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal de resultado -->
+  <div class="ruleta-resultado" id="ruleta-resultado">
+    <div class="ruleta-resultado-card">
+      <p class="resultado-label">✨ Plan elegido ✨</p>
+      <div class="resultado-emoji" id="resultado-emoji">🎬</div>
+      <h3 class="resultado-titulo" id="resultado-titulo">Ir al cine</h3>
+      <p class="resultado-cat" id="resultado-cat">🎬 Cine y pantallas</p>
+
+      <div class="resultado-acciones">
+        <button type="button" id="resultado-aceptar" class="resultado-btn primario">✨ ¡Vamos a hacerlo!</button>
+        <button type="button" id="resultado-otra-vez" class="resultado-btn">🎲 Girar de nuevo</button>
+        <button type="button" id="resultado-descartar" class="resultado-btn sutil">✕ No me convence</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="ideas.js"></script>
 <script src="script.js"></script>
+<script src="ruleta.js"></script>
 </body>
 </html>

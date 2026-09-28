@@ -290,15 +290,71 @@ body {
   .volver { top: 14px; left: 14px; padding: 8px 14px; font-size: 1rem; }
   .encabezado { padding-top: 70px; }
 }
-/* ---- Filtros de estado (Todas / Pendientes / Completadas) ---- */
-.estados {
-  max-width: 1100px;
-  margin: 18px auto 0;
-  padding: 0 24px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
+/* ============================================================
+   FILTRO ESTADO (dropdown)
+============================================================ */
+.filtro-select {
+  padding: 13px 42px 13px 20px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.05rem;
+  color: #f0e2c8;
+  background: rgba(87, 57, 42, .35);
+  border: 1px solid rgba(217, 168, 108, .35);
+  border-radius: 40px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9a86c' stroke-width='2.5'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 14px;
+  transition: border-color .2s, background .2s;
+  min-width: 190px;
+}
+.filtro-select:focus {
+  border-color: rgba(217, 168, 108, .8);
+}
+.filtro-select option {
+  background: #2a1f18;
+  color: #f0e2c8;
+}
+
+/* El filtro de categoría tenía su propio bloque; ahora ambos usan .filtro-select */
+#filtro {
+  padding: 13px 42px 13px 20px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.05rem;
+  color: #f0e2c8;
+  background: rgba(87, 57, 42, .35);
+  border: 1px solid rgba(217, 168, 108, .35);
+  border-radius: 40px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9a86c' stroke-width='2.5'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 14px;
+  transition: border-color .2s, background .2s;
+}
+#filtro:focus {
+  border-color: rgba(217, 168, 108, .8);
+}
+#filtro option {
+  background: #2a1f18;
+  color: #f0e2c8;
+}
+
+@media (max-width: 640px) {
+  .filtro-select,
+  #filtro {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .estado-btn {
