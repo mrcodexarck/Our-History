@@ -1,0 +1,23 @@
+{
+  "name": "our-history",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server -c-1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrcodexarck/Our-History.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrcodexarck/Our-History/issues"
+  },
+  "homepage": "https://github.com/mrcodexarck/Our-History#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

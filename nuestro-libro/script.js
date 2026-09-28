@@ -28,7 +28,22 @@ function htmlRecuerdo(r) {
 }
 
 /* --- construir el libro --- */
-crearPagina(`<h1>${TITULO_LIBRO}</h1><p class="sub">${SUBTITULO_LIBRO}</p>`, "portada-pagina");
+crearPagina(`
+  <div class="espiral">
+    <div class="anillo"></div><div class="anillo"></div><div class="anillo"></div>
+    <div class="anillo"></div><div class="anillo"></div><div class="anillo"></div>
+    <div class="anillo"></div><div class="anillo"></div><div class="anillo"></div>
+  </div>
+  <div class="tapa-borde">
+    <h1 class="titulo-tapa">
+      <span class="amarillo">NUESTRO</span>
+      <span class="blanco">LIBRO DE</span>
+      <span class="rosa">AVENTURAS</span>
+    </h1>
+    <div class="calcomania">🌍</div>
+    <p class="firma">Emily y Joan</p>
+  </div>
+`, "portada-pagina");
 
 RECUERDOS.forEach(r => crearPagina(htmlRecuerdo(r)));
 

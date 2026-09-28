@@ -223,3 +223,91 @@ body {
 /* el libro por encima de las decoraciones */
 .libro { z-index: 2; }
 .controles, .pista { position: relative; z-index: 2; }
+/* ====== PORTADA ESTILO ÁLBUM (CORREGIDO) ====== */
+.portada-pagina {
+  background: linear-gradient(150deg, #4a1515 0%, #2e1c13 100%);
+  color: #ecd9b8;
+  padding: 0; /* Quitamos el padding para que el cuero llegue a los bordes */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tapa-borde {
+  width: 100%;
+  height: 100%;
+  border: 3px double #d4af37; /* Borde dorado */
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+/* Espiral de encuadernación */
+.espiral {
+  position: absolute;
+  left: 0; /* Pegado al borde izquierdo */
+  top: 5%;
+  bottom: 5%;
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 10;
+}
+.espiral::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  bottom: -20px;
+  width: 4px;
+  background: #1a1a1a;
+  border-radius: 2px;
+}
+.anillo {
+  width: 25px;
+  height: 8px;
+  background: linear-gradient(to bottom, #ccc, #666);
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  position: relative;
+  z-index: 11;
+}
+
+/* Título multicolor */
+.titulo-tapa {
+  text-align: center;
+  margin-bottom: 20px;
+  transform: rotate(-2deg);
+}
+.titulo-tapa span {
+  display: block;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  line-height: 1.1;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+}
+.amarillo { color: #f4d03f; transform: rotate(-2deg); }
+.blanco   { color: #ffffff; transform: rotate(1deg); font-size: 0.85em !important; }
+.rosa     { color: #ffb6c1; transform: rotate(-3deg); }
+
+.calcomania {
+  font-size: 2.5rem;
+  margin: 15px 0;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+}
+
+.firma {
+  font-family: "Caveat", cursive;
+  font-size: 1.4rem;
+  color: #d4af37;
+  margin-top: 10px;
+}
