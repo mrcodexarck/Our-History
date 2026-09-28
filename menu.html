@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nuestro Rincón 💛</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    display:grid; place-items:center; padding:24px; overflow-x:hidden;
+    background: radial-gradient(circle at 50% 20%, #241c17, #0c0907 70%);
+    font-family:"Cormorant Garamond", Georgia, serif;
+    color:#f0e2c8; position:relative; min-height:100vh;
+  }
+  .decoraciones { position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
+  .deco-item {
+    position:absolute; top:-80px; user-select:none;
+    animation:caer linear infinite;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));
+  }
+  @keyframes caer {
+    0%   { transform: translate(0,-80px) rotate(0deg); }
+    100% { transform: translate(var(--deriva,0px),110vh) rotate(360deg); }
+  }
+  .contenedor { position:relative; z-index:2; max-width:900px; width:100%; text-align:center; }
+  h1 {
+    font-family:"Playfair Display", Georgia, serif;
+    font-size:clamp(1.8rem, 5vw, 2.6rem);
+    margin-bottom:8px;
+  }
+  .subtitulo {
+    font-family:"Caveat", cursive;
+    font-size:clamp(1.2rem, 3vw, 1.5rem);
+    color:#d9a86c; margin-bottom:40px;
+  }
+  .modulos {
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:22px;
+  }
+  .modulo {
+    display:block; text-decoration:none; color:inherit;
+    padding:38px 26px; border-radius:12px;
+    background: linear-gradient(160deg, rgba(87,57,42,.55), rgba(46,28,19,.8));
+    border:1px solid rgba(217,168,108,.3);
+    box-shadow:0 20px 44px rgba(0,0,0,.5);
+    transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    position:relative; overflow:hidden;
+  }
+  .modulo:hover {
+    transform: translateY(-6px);
+    box-shadow:0 30px 60px rgba(0,0,0,.65);
+    border-color: rgba(217,168,108,.6);
+  }
+  .modulo .icono { font-size:3rem; margin-bottom:16px; display:block; }
+  .modulo h2 {
+    font-family:"Playfair Display", Georgia, serif;
+    font-size:1.35rem; margin-bottom:8px;
+  }
+  .modulo p { font-size:1rem; color:#c9b48e; line-height:1.5; }
+  .modulo .flecha {
+    display:inline-block; margin-top:18px;
+    font-family:"Caveat", cursive; font-size:1.15rem; color:#d9a86c;
+  }
+  .pie {
+    margin-top:46px; font-family:"Caveat", cursive; font-size:1.1rem;
+    color: rgba(217,168,108,.5);
+  }
+</style>
+</head>
+<body>
+
+<div class="decoraciones" id="deco" aria-hidden="true"></div>
+
+<main class="contenedor">
+  <h1>Nuestro Rincón</h1>
+  <p class="subtitulo">Elige a dónde quieres ir hoy 🤎</p>
+
+  <div class="modulos">
+    <a href="./nuestro-libro/" class="modulo">
+      <span class="icono">📖</span>
+      <h2>Nuestro Libro</h2>
+      <p>Cada página guarda un momento, una risa, un lugar.</p>
+      <span class="flecha">Abrir →</span>
+    </a>
+
+    <a href="./citas/" class="modulo">
+      <span class="icono">✅</span>
+      <h2>200 Cosas Por Hacer Juntos</h2>
+      <p>Ideas de citas y planes. Marca las que ya cumplieron.</p>
+      <span class="flecha">Ver lista →</span>
+    </a>
+  </div>
+
+  <p class="pie">Hecho con mucho amor 🤎</p>
+</main>
+
+<script>
+  if (sessionStorage.getItem("acceso-libro") !== "ok") {
+    location.replace("./");
+  }
+
+  (function () {
+    const EMOJIS = ["🤎", "✨", "🐵", "📖", "✅", "💛"];
+    const cont = document.getElementById("deco");
+    const cantidad = window.innerWidth < 700 ? 14 : 30;
+    for (let i = 0; i < cantidad; i++) {
+      const el = document.createElement("span");
+      el.className = "deco-item";
+      el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      el.style.fontSize = (18 + Math.random() * 30) + "px";
+      el.style.left = Math.random() * 100 + "%";
+      el.style.opacity = (0.3 + Math.random() * 0.5).toFixed(2);
+      const dur = 9 + Math.random() * 12;
+      el.style.animationDuration = dur + "s";
+      el.style.animationDelay = (-Math.random() * dur) + "s";
+      el.style.setProperty("--deriva", ((Math.random() - 0.5) * 120) + "px");
+      cont.appendChild(el);
+    }
+  })();
+</script>
+</body>
+</html>

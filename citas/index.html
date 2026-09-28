@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>200 Cosas Por Hacer Juntos 💛</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Caveat:wght@500;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<a href="../menu.html" class="volver">‹ Volver al menú</a>
+
+<header class="encabezado">
+  <div class="banner">
+    <h1>200 Cosas y Planes para Hacer juntos</h1>
+    <p class="subtitulo">Al menos una vez en la vida 🤎</p>
+  </div>
+
+  <div class="progreso">
+    <span id="contador">0 / 0</span>
+    <div class="barra"><div class="barra-lleno" id="barra"></div></div>
+  </div>
+
+<div class="controles">
+    <div class="buscador">
+      <span class="lupa">🔍</span>
+      <input type="text" id="busqueda" placeholder="Buscar un plan…" autocomplete="off" />
+    </div>
+    <select id="filtro">
+      <option value="">Todas las categorías</option>
+    </select>
+  </div>
+
+  <div class="estados">
+    <button class="estado-btn activo" data-estado="todas">Todas</button>
+    <button class="estado-btn" data-estado="pendientes">Pendientes</button>
+    <button class="estado-btn" data-estado="completadas">Completadas</button>
+  </div>
+</header>
+
+<main class="hojas" id="hojas"></main>
+
+<p class="pie">Hecho con mucho amor 🤎</p>
+
+<script src="ideas.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

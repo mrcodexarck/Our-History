@@ -3,12 +3,14 @@ const contador    = document.getElementById("contador");
 const btnAtras    = document.getElementById("atras");
 const btnAdelante = document.getElementById("adelante");
 
-const DURACION = 900;      // debe coincidir con --duracion en CSS
+const DURACION = 900;
 let actual    = 0;
 let animando  = false;
 let paginas   = [];
 
-/* --- helpers --- */
+/* ============================================================
+   HELPERS
+============================================================ */
 function crearPagina(html, clase = "") {
   const d = document.createElement("div");
   d.className = "pagina " + clase;
@@ -17,17 +19,50 @@ function crearPagina(html, clase = "") {
   return d;
 }
 
-function htmlRecuerdo(r) {
+/* ============================================================
+   PÁGINA 1: FOTO + CABECERA
+============================================================ */
+function htmlFotoRecuerdo(r) {
   return `
-    ${r.foto ? `<div class="foto"><img src="${r.foto}" alt="${r.titulo}" loading="lazy"></div>` : ""}
-    ${r.fecha ? `<p class="fecha">${r.fecha}</p>` : ""}
-    <h2 class="titulo">${r.titulo}</h2>
-    ${r.lugar ? `<p class="lugar">${r.lugar}</p>` : ""}
+    ${r.foto ? `
+      <div class="foto-wrap">
+        <div class="foto">
+          <img src="${r.foto}" alt="${r.titulo}" loading="lazy">
+        </div>
+      </div>
+    ` : ""}
+
+    <div class="cabecera">
+      ${r.fecha ? `<p class="fecha">${r.fecha}</p>` : ""}
+      <h2 class="titulo">${r.titulo}</h2>
+      ${r.lugar ? `<p class="lugar">${r.lugar}</p>` : ""}
+    </div>
+
+    <div class="divisor"><span>❦</span></div>
+  `;
+}
+
+/* ============================================================
+   PÁGINA 2: TEXTO DEL RECUERDO
+============================================================ */
+function htmlTextoRecuerdo(r) {
+  return `
+    <div class="cabecera cabecera-mini">
+      ${r.fecha ? `<p class="fecha">${r.fecha}</p>` : ""}
+      <h2 class="titulo titulo-mini">${r.titulo}</h2>
+    </div>
+
+    <div class="divisor"><span>❦</span></div>
+
     <p class="texto">${r.texto}</p>
   `;
 }
 
-/* --- construir el libro --- */
+/* ============================================================
+   CONSTRUIR EL LIBRO
+============================================================ */
+
+/* --- Portada --- */
 crearPagina(`
   <div class="espiral">
     <div class="anillo"></div><div class="anillo"></div><div class="anillo"></div>
@@ -45,36 +80,48 @@ crearPagina(`
   </div>
 `, "portada-pagina");
 
-RECUERDOS.forEach(r => crearPagina(htmlRecuerdo(r)));
+/* --- Recuerdos: 2 páginas cada uno --- */
+RECUERDOS.forEach(r => {
+  crearPagina(htmlFotoRecuerdo(r),  "pagina-recuerdo pagina-foto");
+  crearPagina(htmlTextoRecuerdo(r), "pagina-recuerdo pagina-texto");
+});
 
-crearPagina(`<h1>Continuará…</h1><p class="sub">Seguimos escribiendo ✦</p>`, "portada-pagina");
+/* --- Página final --- */
+crearPagina(
+  `<h1>Continuará…</h1><p class="sub">Seguimos escribiendo ✦</p>`,
+  "portada-pagina"
+);
 
+/* ============================================================
+   ESTADO INICIAL
+============================================================ */
 paginas = [...libro.querySelectorAll(".pagina")];
 paginas[0].classList.add("activa");
 actualizarUI();
 
-/* --- navegación --- */
 function actualizarUI() {
-  contador.textContent    = `${actual + 1} / ${paginas.length}`;
-  btnAtras.disabled       = actual === 0;
-  btnAdelante.disabled    = actual === paginas.length - 1;
+  contador.textContent = `${actual + 1} / ${paginas.length}`;
+  btnAtras.disabled    = actual === 0;
+  btnAdelante.disabled = actual === paginas.length - 1;
 }
 
+/* ============================================================
+   NAVEGACIÓN CON ANIMACIÓN DE VOLTEO
+============================================================ */
 function irA(destino) {
   if (animando || destino === actual || destino < 0 || destino >= paginas.length) return;
   animando = true;
 
-  const vieja  = paginas[actual];
-  const nueva  = paginas[destino];
+  const vieja   = paginas[actual];
+  const nueva   = paginas[destino];
   const avanzar = destino > actual;
 
-  /* la nueva aparece sin animación de opacidad */
   nueva.style.transition = "none";
   nueva.classList.add("activa");
 
   if (avanzar) {
-    nueva.style.zIndex = 1;
-    vieja.style.zIndex = 2;
+    nueva.style.zIndex     = 1;
+    vieja.style.zIndex     = 2;
     nueva.style.transition = "";
     void nueva.offsetWidth;
     requestAnimationFrame(() => vieja.classList.add("volteada"));
@@ -82,7 +129,7 @@ function irA(destino) {
     nueva.style.zIndex = 2;
     vieja.style.zIndex = 1;
     nueva.classList.add("volteada");
-    void nueva.offsetWidth;             // forzar reflow
+    void nueva.offsetWidth;
     nueva.style.transition = "";
     requestAnimationFrame(() => nueva.classList.remove("volteada"));
   }
@@ -100,14 +147,16 @@ function irA(destino) {
 
     [vieja, nueva].forEach(p => {
       p.style.transition = "";
-      p.style.zIndex = "";
+      p.style.zIndex     = "";
     });
 
     animando = false;
   }, DURACION);
 }
 
-/* --- eventos --- */
+/* ============================================================
+   EVENTOS
+============================================================ */
 btnAtras.addEventListener("click",    () => irA(actual - 1));
 btnAdelante.addEventListener("click", () => irA(actual + 1));
 
@@ -116,7 +165,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft")  irA(actual - 1);
 });
 
-/* swipe en móvil */
+/* --- Swipe móvil --- */
 let x0 = null;
 libro.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
 libro.addEventListener("touchend", e => {

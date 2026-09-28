@@ -1,0 +1,334 @@
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  background: radial-gradient(circle at 50% 0%, #241c17, #0c0907 70%);
+  background-attachment: fixed;
+  color: #f0e2c8;
+  min-height: 100vh;
+  padding: 0 0 80px;
+}
+
+/* ---- Botón volver (mismo estilo que el libro) ---- */
+.volver {
+  position: fixed;
+  top: 20px; left: 20px;
+  z-index: 50;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 20px;
+  font-family: "Caveat", cursive;
+  font-size: 1.15rem;
+  color: #d9a86c;
+  text-decoration: none;
+  background: rgba(20, 15, 12, .55);
+  border: 1px solid rgba(217, 168, 108, .35);
+  border-radius: 40px;
+  backdrop-filter: blur(6px);
+  transition: transform .25s ease, background .25s ease, border-color .25s ease;
+}
+.volver:hover {
+  transform: translateX(-3px);
+  background: rgba(20, 15, 12, .8);
+  border-color: rgba(217, 168, 108, .7);
+}
+
+/* ---- Encabezado ---- */
+.encabezado { width: 100%; padding-top: 60px; }
+
+.banner {
+  text-align: center;
+  padding: 0 24px;
+  color: #f0e2c8;
+}
+
+.banner h1 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3.8vw, 2.3rem);
+  line-height: 1.2;
+  max-width: 900px;
+  margin: 0 auto 12px;
+  color: #f0e2c8;
+  letter-spacing: .5px;
+}
+
+.banner .subtitulo {
+  font-family: "Caveat", cursive;
+  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
+  color: #d9a86c;
+  letter-spacing: .5px;
+}
+
+/* ---- Progreso ---- */
+.progreso {
+  max-width: 1100px;
+  margin: 28px auto 0;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-family: "Caveat", cursive;
+  font-size: 1.2rem;
+  color: #c9b48e;
+}
+.barra {
+  flex: 1;
+  max-width: 380px;
+  height: 8px;
+  background: rgba(217, 168, 108, .15);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.barra-lleno {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #d9a86c, #e0b87e);
+  border-radius: 20px;
+  transition: width .5s ease;
+}
+
+/* ---- Controles (buscar + filtrar) ---- */
+.controles {
+  max-width: 1100px;
+  margin: 26px auto 0;
+  padding: 0 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.buscador {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+.buscador .lupa {
+  position: absolute;
+  left: 18px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  opacity: .55;
+  pointer-events: none;
+}
+.buscador input {
+  width: 100%;
+  padding: 13px 18px 13px 46px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.05rem;
+  color: #f0e2c8;
+  background: rgba(87, 57, 42, .35);
+  border: 1px solid rgba(217, 168, 108, .35);
+  border-radius: 40px;
+  outline: none;
+  transition: border-color .2s, background .2s;
+}
+.buscador input:focus {
+  border-color: rgba(217, 168, 108, .8);
+  background: rgba(87, 57, 42, .55);
+}
+.buscador input::placeholder { color: rgba(201, 180, 142, .45); }
+
+#filtro {
+  padding: 13px 42px 13px 20px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.05rem;
+  color: #f0e2c8;
+  background: rgba(87, 57, 42, .35);
+  border: 1px solid rgba(217, 168, 108, .35);
+  border-radius: 40px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9a86c' stroke-width='2.5'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 14px;
+  transition: border-color .2s, background .2s;
+}
+#filtro:focus { border-color: rgba(217, 168, 108, .8); }
+#filtro option {
+  background: #2a1f18;
+  color: #f0e2c8;
+}
+
+/* ---- Hojas / grupos (papel viejo, igual que el libro) ---- */
+.hojas {
+  max-width: 1100px;
+  margin: 40px auto 0;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.hoja {
+  background-color: #f7f1e5;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(170,140,95,.07), transparent 55%),
+    radial-gradient(circle at 82% 78%, rgba(170,140,95,.06), transparent 50%);
+  padding: 32px 30px 22px;
+  border-radius: 4px 10px 10px 4px;
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.5),
+    inset 0 0 0 1px rgba(255,255,255,.35);
+  position: relative;
+  overflow: hidden;
+}
+/* Lomo del libro a la izquierda */
+.hoja::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 22px;
+  background: linear-gradient(to right, rgba(90,68,45,.18), rgba(90,68,45,0));
+  pointer-events: none;
+}
+
+.hoja h2 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #7d6c5c;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(180, 150, 110, .35);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Cuadrícula de items ---- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px 18px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+  min-width: 0;
+}
+.item:hover { background: rgba(181, 138, 90, .1); }
+
+.item .check {
+  flex: 0 0 18px;
+  width: 18px; height: 18px;
+  border: 2px solid #b58a5a;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: .75rem;
+  font-weight: bold;
+  color: transparent;
+  transition: all .2s ease;
+  margin-top: 1px;
+  background: rgba(255,255,255,.35);
+}
+.item .check::after { content: "✓"; }
+
+.item .texto {
+  flex: 1;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #3b322b;
+  transition: color .2s;
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+.item.hecho .check {
+  background: linear-gradient(135deg, #d9a86c, #b58a5a);
+  border-color: #b58a5a;
+  color: #fff;
+}
+.item.hecho .texto {
+  color: #a8998a;
+  text-decoration: line-through;
+  text-decoration-color: rgba(181, 138, 90, .6);
+}
+
+/* ---- Mensaje sin resultados ---- */
+.vacio {
+  text-align: center;
+  padding: 60px 20px;
+  font-family: "Caveat", cursive;
+  font-size: 1.4rem;
+  color: rgba(217, 168, 108, .55);
+}
+
+/* ---- Pie ---- */
+.pie {
+  text-align: center;
+  margin-top: 50px;
+  font-family: "Caveat", cursive;
+  font-size: 1.15rem;
+  color: rgba(217, 168, 108, .5);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr; }
+  .hoja { padding: 24px 18px 14px 28px; }
+  .controles { padding: 0 16px; }
+  .progreso { padding: 0 16px; flex-direction: column; gap: 10px; }
+  .barra { max-width: 100%; width: 100%; }
+  .volver { top: 14px; left: 14px; padding: 8px 14px; font-size: 1rem; }
+  .encabezado { padding-top: 70px; }
+}
+/* ---- Filtros de estado (Todas / Pendientes / Completadas) ---- */
+.estados {
+  max-width: 1100px;
+  margin: 18px auto 0;
+  padding: 0 24px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.estado-btn {
+  padding: 9px 22px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: .5px;
+  color: #c9b48e;
+  background: rgba(87, 57, 42, .3);
+  border: 1px solid rgba(217, 168, 108, .28);
+  border-radius: 40px;
+  cursor: pointer;
+  transition: all .25s ease;
+}
+
+.estado-btn:hover {
+  color: #f0e2c8;
+  border-color: rgba(217, 168, 108, .6);
+  background: rgba(87, 57, 42, .55);
+}
+
+.estado-btn.activo {
+  color: #2a1d12;
+  background: linear-gradient(135deg, #e0b87e, #c9985a);
+  border-color: #c9985a;
+  box-shadow: 0 6px 16px rgba(200, 140, 80, .35);
+}
+
+@media (max-width: 560px) {
+  .estados { padding: 0 16px; gap: 8px; }
+  .estado-btn { padding: 8px 16px; font-size: .95rem; }
+}

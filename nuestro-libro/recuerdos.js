@@ -25,7 +25,7 @@ const RECUERDOS = [
     titulo: "Donde todo empezó",
     fecha:  "23 de octubre, 2025",
     lugar:  "C.C Centro comercial ",
-    foto:   "img/mayllo.jpg",
+    foto:   "img/img3.jpg",
     texto:  ` El dia 23 de octubre de 2025 fue el día en que todo comenzó, ese dia jueves tuve la valentia de hablar contigo, no te conocia y hasta ese momento no sabia quien eras, como pensabas o como sentias.
 
     tuve el valor de hablarte y usar mis capacidades de observacion para presumir y apostar contigo, no sabia quien era Mayllo y no sabia lo importante que era en tu vida, pero inconsientemente, o como parte del destino busque una excusa en el. 
