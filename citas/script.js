@@ -5,11 +5,12 @@ const inputBuscar  = document.getElementById("busqueda");
 const selectFiltro = document.getElementById("filtro");
 const selectEstado = document.getElementById("filtro-estado");
 
-
 const CLAVE_STORAGE = "citas-hechas";
 let hechas = JSON.parse(localStorage.getItem(CLAVE_STORAGE) || "{}");
 
-/* --- Agrupar por categoría --- */
+/* ============================================================
+   AGRUPAR POR CATEGORÍA
+============================================================ */
 const categorias = [];
 const porCat = {};
 IDEAS.forEach((idea, i) => {
@@ -20,7 +21,9 @@ IDEAS.forEach((idea, i) => {
   porCat[idea.cat].push({ ...idea, id: i });
 });
 
-/* --- Llenar el select de filtros --- */
+/* ============================================================
+   LLENAR EL SELECT DE CATEGORÍAS
+============================================================ */
 categorias.forEach(cat => {
   const opt = document.createElement("option");
   opt.value = cat;
@@ -28,7 +31,9 @@ categorias.forEach(cat => {
   selectFiltro.appendChild(opt);
 });
 
-/* --- Renderizar --- */
+/* ============================================================
+   RENDERIZAR
+============================================================ */
 categorias.forEach(cat => {
   const hoja = document.createElement("section");
   hoja.className = "hoja";
@@ -63,7 +68,9 @@ categorias.forEach(cat => {
   contenedor.appendChild(hoja);
 });
 
-/* --- Progreso --- */
+/* ============================================================
+   PROGRESO
+============================================================ */
 function actualizarProgreso() {
   const total = IDEAS.length;
   const num   = Object.values(hechas).filter(Boolean).length;
@@ -72,7 +79,9 @@ function actualizarProgreso() {
 }
 actualizarProgreso();
 
-/* --- Buscador + filtro de categoría + filtro de estado --- */
+/* ============================================================
+   FILTROS
+============================================================ */
 let estadoActual = "todas";
 
 function aplicarFiltros() {
@@ -118,16 +127,10 @@ function aplicarFiltros() {
 
 inputBuscar.addEventListener("input", aplicarFiltros);
 selectFiltro.addEventListener("change", aplicarFiltros);
-
-/* Filtro de estado (dropdown) */
-const selectEstado = document.getElementById("filtro-estado");
 selectEstado.addEventListener("change", () => {
   estadoActual = selectEstado.value;
   aplicarFiltros();
 });
-
-inputBuscar.addEventListener("input", aplicarFiltros);
-selectFiltro.addEventListener("change", aplicarFiltros);
 
 /* ============================================================
    API pública para la ruleta
