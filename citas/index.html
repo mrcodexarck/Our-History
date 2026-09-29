@@ -116,6 +116,24 @@
   </div>
 </div>
 
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { FIREBASE_CONFIG, PAREJA_ID } from "./firebase-config.js";
+
+  const app  = initializeApp(FIREBASE_CONFIG);
+  const db   = getFirestore(app);
+  const auth = getAuth(app);
+
+  window.FIREBASE = {
+    db, auth, signInAnonymously, doc, onSnapshot, setDoc, PAREJA_ID
+  };
+
+  window.dispatchEvent(new Event("firebase-listo"));
+</script>
+
 <script src="ideas.js"></script>
 <script src="script.js"></script>
 <script src="ruleta.js"></script>

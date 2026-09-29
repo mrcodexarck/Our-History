@@ -1,3 +1,6 @@
+/* ============================================================
+   DOM
+============================================================ */
 const contenedor   = document.getElementById("hojas");
 const contador     = document.getElementById("contador");
 const barra        = document.getElementById("barra");
@@ -5,8 +8,16 @@ const inputBuscar  = document.getElementById("busqueda");
 const selectFiltro = document.getElementById("filtro");
 const selectEstado = document.getElementById("filtro-estado");
 
+/* ============================================================
+   ESTADO
+============================================================ */
 const CLAVE_STORAGE = "citas-hechas";
 let hechas = JSON.parse(localStorage.getItem(CLAVE_STORAGE) || "{}");
+let estadoActual = "todas";
+
+let docRef = null;
+let firebaseListo = false;
+let guardando = false;
 
 /* ============================================================
    AGRUPAR POR CATEGORÍA
@@ -22,7 +33,7 @@ IDEAS.forEach((idea, i) => {
 });
 
 /* ============================================================
-   LLENAR EL SELECT DE CATEGORÍAS
+   SELECT DE CATEGORÍAS
 ============================================================ */
 categorias.forEach(cat => {
   const opt = document.createElement("option");
@@ -55,18 +66,28 @@ categorias.forEach(cat => {
       <span class="check"></span>
       <span class="texto">${idea.txt}</span>
     `;
-    item.addEventListener("click", () => {
-      hechas[idea.id] = !hechas[idea.id];
-      item.classList.toggle("hecho", hechas[idea.id]);
-      localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
-      actualizarProgreso();
-    });
+    item.addEventListener("click", () => marcarIdea(idea.id, item));
     grid.appendChild(item);
   });
 
   hoja.appendChild(grid);
   contenedor.appendChild(hoja);
 });
+
+/* ============================================================
+   MARCAR / DESMARCAR
+============================================================ */
+function marcarIdea(id, itemEl) {
+  hechas[id] = !hechas[id];
+  if (itemEl) itemEl.classList.toggle("hecho", hechas[id]);
+  actualizarProgreso();
+  guardarEstado();
+}
+
+function actualizarItem(id) {
+  const item = document.querySelector(`.item[data-id="${id}"]`);
+  if (item) item.classList.toggle("hecho", hechas[id] === true);
+}
 
 /* ============================================================
    PROGRESO
@@ -82,8 +103,6 @@ actualizarProgreso();
 /* ============================================================
    FILTROS
 ============================================================ */
-let estadoActual = "todas";
-
 function aplicarFiltros() {
   const q      = inputBuscar.value.trim().toLowerCase();
   const catSel = selectFiltro.value;
@@ -109,7 +128,6 @@ function aplicarFiltros() {
     hoja.style.display = visibles > 0 ? "" : "none";
   });
 
-  // Mensaje si no hay nada
   const visiblesTotal = [...document.querySelectorAll(".hoja")]
     .filter(h => h.style.display !== "none").length;
   let vacio = document.querySelector(".vacio");
@@ -133,6 +151,66 @@ selectEstado.addEventListener("change", () => {
 });
 
 /* ============================================================
+   FIREBASE
+============================================================ */
+async function initFirebase() {
+  if (!window.FIREBASE) {
+    console.warn("⚠️ Firebase no está cargado. Solo localStorage.");
+    return;
+  }
+
+  const { db, auth, signInAnonymously, doc, onSnapshot, PAREJA_ID } = window.FIREBASE;
+
+  try {
+    await signInAnonymously(auth);
+  } catch (err) {
+    console.error("Error autenticando:", err);
+    return;
+  }
+
+  docRef = doc(db, "parejas", PAREJA_ID);
+
+  onSnapshot(docRef, snap => {
+    const data = snap.data();
+    if (!data || !data.hechas) return;
+
+    hechas = data.hechas;
+    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+
+    IDEAS.forEach((_, id) => actualizarItem(id));
+    actualizarProgreso();
+    aplicarFiltros();
+
+    console.log("☁️ Sincronizado desde Firebase");
+  }, err => {
+    console.error("Error escuchando cambios:", err);
+  });
+
+  firebaseListo = true;
+  console.log("✅ Firebase listo");
+}
+
+async function guardarEstado() {
+  localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+
+  if (!firebaseListo || !docRef) return;
+  if (guardando) return;
+
+  guardando = true;
+  try {
+    const { setDoc } = window.FIREBASE;
+    await setDoc(docRef, { hechas, updatedAt: Date.now() }, { merge: true });
+  } catch (err) {
+    console.error("Error guardando en Firebase:", err);
+  } finally {
+    guardando = false;
+  }
+}
+
+window.addEventListener("firebase-listo", initFirebase);
+if (window.FIREBASE) initFirebase();
+
+/* ============================================================
    API pública para la ruleta
 ============================================================ */
 window.CitasApp = {
@@ -140,10 +218,8 @@ window.CitasApp = {
   estaHecha: (id) => hechas[id] === true,
   marcarHecha: (id) => {
     hechas[id] = true;
-    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+    actualizarItem(id);
     actualizarProgreso();
-    const item = document.querySelector(`.item[data-id="${id}"]`);
-    if (item) item.classList.add("hecho");
-    if (typeof guardarHechas === "function") guardarHechas();
+    guardarEstado();
   }
 };
