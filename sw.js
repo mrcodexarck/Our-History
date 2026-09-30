@@ -3,7 +3,7 @@
    Cachea todas las páginas para funcionar offline.
 ============================================================ */
 
-const CACHE_NAME = "nuestra-historia-v1";
+const CACHE_NAME = "nuestra-historia-v2";
 
 const ASSETS = [
   "./",
