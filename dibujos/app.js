@@ -356,31 +356,31 @@ if (btnUndo) {
   btnUndo.addEventListener("click", async () => {
     if (!firebaseListo || !strokesRefs[hojaActual]) return;
 
-    // Buscar mi último trazo (excluyendo el currentStroke)
-    const misTrazo = localStrokes
-      .filter(s => s.author === myUid && s.id && !s.id.startsWith("local-"))
+    // Buscar mi último trazo (no cuenta el que estoy dibujando ahora)
+    const misTrazos = localStrokes
+      .filter(s => s.author === myUid)
       .sort((a, b) => b.ts - a.ts);
 
-    if (misTrazo.length === 0) {
+    if (misTrazos.length === 0) {
       console.log("No hay trazos propios que deshacer");
       return;
     }
 
-    const ultimo = misTrazo[0];
+    const ultimo = misTrazos[0];
+    const docId  = `${hoyISO()}-${hojaActual}`;
+
     try {
-      const docRef = doc(strokesRefs[hojaActual].firestore || strokesRefs[hojaActual], ultimo.id);
-      // Necesitamos la referencia correcta al doc
-      await deleteDoc(
-        doc(
-          strokesRefs[hojaActual].firestore || window.FIREBASE.db,
-          "parejas", PAREJA_ID, "dibujos",
-          `${hoyISO()}-${hojaActual}`,
-          "strokes", ultimo.id
-        )
+      // Referencia correcta al documento del trazo
+      const strokeDocRef = doc(
+        db,
+        "parejas", PAREJA_ID,
+        "dibujos", docId,
+        "strokes", ultimo.id
       );
+      await deleteDoc(strokeDocRef);
       console.log("🗑️ Trazo borrado:", ultimo.id);
     } catch (err) {
-      console.error("Error borrando trazo:", err);
+      console.error("❌ Error borrando trazo:", err);
     }
   });
 }
