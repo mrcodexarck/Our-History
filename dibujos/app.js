@@ -11,13 +11,15 @@ import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
 ============================================================ */
 function hoyISO() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const hoy = new Date();
-document.getElementById("fecha-dia").textContent  = `${hoy.getDate()} de ${MESES[hoy.getMonth()]}`;
-document.getElementById("fecha-anio").textContent = hoy.getFullYear();
+const fechaDiaEl  = document.getElementById("fecha-dia");
+const fechaAnioEl = document.getElementById("fecha-anio");
+if (fechaDiaEl)  fechaDiaEl.textContent  = `${hoy.getDate()} de ${MESES[hoy.getMonth()]}`;
+if (fechaAnioEl) fechaAnioEl.textContent = hoy.getFullYear();
 
 /* ============================================================
    CANVAS
@@ -39,31 +41,41 @@ pintarFondo();
 ============================================================ */
 let colorActual  = "#3b322b";
 let tamanoActual = 8;
-let herramienta  = "brush";
+let herramienta  = "lapiz";           // lapiz | marcador | pincel | borrador
 let dibujando    = false;
 let ultimoPunto  = null;
 let ultimoTrazo  = 0;
+let esMiTrazo    = false;
+
+let firebaseListo = false;
+let docRef        = null;
+let guardando     = false;
 let timeoutGuardar = null;
 
+/* ============================================================
+   UNDO (deshacer)
+============================================================ */
 const undoStack = [];
-const MAX_UNDO = 10;
+const MAX_UNDO = 15;
 
 function guardarEstadoUndo() {
   try {
     undoStack.push(ctx.getImageData(0, 0, W, H));
     if (undoStack.length > MAX_UNDO) undoStack.shift();
-  } catch (e) { /* silencioso */ }
+  } catch (e) {
+    console.warn("No se pudo guardar undo:", e);
+  }
 }
 
 function deshacer() {
   if (undoStack.length === 0) return;
   const estado = undoStack.pop();
   ctx.putImageData(estado, 0, 0);
-  programarGuardar();
+  programarGuardar(150);
 }
 
 /* ============================================================
-   DRAWING
+   HELPERS DE TRAZO
 ============================================================ */
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -73,42 +85,74 @@ function getPos(e) {
   };
 }
 
+function estilosDeTrazo() {
+  switch (herramienta) {
+    case "borrador":
+      return { color: COLOR_FONDO, ancho: tamanoActual * 1.8, alpha: 1 };
+    case "marcador":
+      return { color: colorActual, ancho: tamanoActual * 1.6, alpha: 0.55 };
+    case "pincel":
+      return { color: colorActual, ancho: tamanoActual * 1.2, alpha: 0.85 };
+    case "lapiz":
+    default:
+      return { color: colorActual, ancho: tamanoActual, alpha: 1 };
+  }
+}
+
+/* ============================================================
+   DIBUJO — POINTER EVENTS
+============================================================ */
 canvas.addEventListener("pointerdown", e => {
   if (e.pointerType === "touch" && e.isPrimary === false) return;
   canvas.setPointerCapture(e.pointerId);
+
   dibujando = true;
+  esMiTrazo = true;
   ultimoPunto = getPos(e);
   guardarEstadoUndo();
 
+  const s = estilosDeTrazo();
   ctx.beginPath();
-  ctx.arc(ultimoPunto.x, ultimoPunto.y, tamanoActual / 2, 0, Math.PI * 2);
-  ctx.fillStyle = herramienta === "eraser" ? COLOR_FONDO : colorActual;
+  ctx.arc(ultimoPunto.x, ultimoPunto.y, s.ancho / 2, 0, Math.PI * 2);
+  ctx.fillStyle = s.color;
+  ctx.globalAlpha = s.alpha;
   ctx.fill();
+  ctx.globalAlpha = 1;
+
   e.preventDefault();
 });
 
 canvas.addEventListener("pointermove", e => {
   if (!dibujando) return;
   const p = getPos(e);
+  const s = estilosDeTrazo();
+
   ctx.beginPath();
   ctx.moveTo(ultimoPunto.x, ultimoPunto.y);
   ctx.lineTo(p.x, p.y);
-  ctx.strokeStyle = herramienta === "eraser" ? COLOR_FONDO : colorActual;
-  ctx.lineWidth = tamanoActual;
+  ctx.strokeStyle = s.color;
+  ctx.lineWidth = s.ancho;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  ctx.globalAlpha = s.alpha;
   ctx.stroke();
+  ctx.globalAlpha = 1;
+
   ultimoPunto = p;
   ultimoTrazo = Date.now();
+
+  // Guardado en tiempo real: cada 500ms mientras dibuja
+  programarGuardar(500);
   e.preventDefault();
 });
 
-function terminarTrazo() {
+function terminarTrazo(e) {
   if (!dibujando) return;
   dibujando = false;
+  esMiTrazo = false;
   ultimoPunto = null;
   ultimoTrazo = Date.now();
-  programarGuardar();
+  programarGuardar(300);
 }
 
 canvas.addEventListener("pointerup", terminarTrazo);
@@ -116,66 +160,115 @@ canvas.addEventListener("pointercancel", terminarTrazo);
 canvas.addEventListener("pointerleave", terminarTrazo);
 
 /* ============================================================
-   PALETA DE COLORES
+   PALETA DE LÁPICES
 ============================================================ */
 const COLORES = [
-  "#3b322b", "#7d6c5c", "#b58a5a", "#d9a86c",
-  "#e88a7a", "#e8b07a", "#f4d03f", "#7da654",
-  "#5b8fb0", "#8b6cb0", "#e88ea7", "#ffffff"
+  { hex: "#3b322b", nombre: "Café oscuro" },
+  { hex: "#7d6c5c", nombre: "Café" },
+  { hex: "#b58a5a", nombre: "Bronce" },
+  { hex: "#d9a86c", nombre: "Dorado" },
+  { hex: "#e88a7a", nombre: "Coral" },
+  { hex: "#e8b07a", nombre: "Durazno" },
+  { hex: "#f4d03f", nombre: "Amarillo" },
+  { hex: "#a8c66c", nombre: "Verde claro" },
+  { hex: "#7da654", nombre: "Verde" },
+  { hex: "#7cc0d4", nombre: "Cielo" },
+  { hex: "#5b8fb0", nombre: "Azul" },
+  { hex: "#8b6cb0", nombre: "Morado" },
+  { hex: "#e88ea7", nombre: "Rosa" },
+  { hex: "#c9524a", nombre: "Rojo" },
+  { hex: "#ffffff", nombre: "Blanco" },
+  { hex: "#000000", nombre: "Negro" }
 ];
 
-const colorsBar = document.getElementById("colors-bar");
-COLORES.forEach(c => {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "color-swatch" + (c === colorActual ? " active" : "");
-  b.style.background = c;
-  b.dataset.color = c;
-  b.addEventListener("click", () => {
-    colorActual = c;
-    herramienta = "brush";
-    document.querySelectorAll(".color-swatch")
-      .forEach(s => s.classList.toggle("active", s.dataset.color === c));
-    document.getElementById("tool-brush").classList.add("active");
-    document.getElementById("tool-eraser").classList.remove("active");
+const lapicesEl = document.getElementById("lapices");
+
+function renderLapices() {
+  if (!lapicesEl) return;
+  lapicesEl.innerHTML = "";
+
+  COLORES.forEach(c => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "lapiz" + (c.hex === colorActual ? " active" : "");
+    btn.title = c.nombre;
+    btn.dataset.color = c.hex;
+    btn.innerHTML = `
+      <div class="cuerpo" style="background:${c.hex};"></div>
+      <div class="punta"></div>
+      <div class="grafito" style="border-bottom-color:${c.hex};"></div>
+    `;
+    btn.addEventListener("click", () => seleccionarColor(c.hex, btn));
+    lapicesEl.appendChild(btn);
   });
-  colorsBar.appendChild(b);
+}
+
+function seleccionarColor(hex, btnEl) {
+  colorActual = hex;
+  herramienta = "lapiz";
+
+  document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
+  btnEl?.classList.add("active");
+
+  document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
+  document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+}
+
+renderLapices();
+
+/* ============================================================
+   HERRAMIENTAS (lápiz, marcador, pincel, borrador)
+============================================================ */
+document.querySelectorAll(".tool[data-tool]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    herramienta = btn.dataset.tool;
+
+    document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    if (herramienta === "borrador") {
+      document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
+    } else {
+      const match = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color === colorActual);
+      match?.classList.add("active");
+    }
+  });
+});
+
+/* ============================================================
+   BOTONES LIMPIAR Y DESHACER
+============================================================ */
+const btnUndo  = document.getElementById("btn-undo");
+const btnClear = document.getElementById("btn-clear");
+
+if (btnUndo)  btnUndo.addEventListener("click", deshacer);
+if (btnClear) btnClear.addEventListener("click", () => {
+  if (!confirm("¿Borrar todo el dibujo de hoy?")) return;
+  guardarEstadoUndo();
+  pintarFondo();
+  programarGuardar(100);
 });
 
 /* ============================================================
    TAMAÑOS
 ============================================================ */
-document.querySelectorAll(".size-btn").forEach(btn => {
+document.querySelectorAll(".tamanos button").forEach(btn => {
   btn.addEventListener("click", () => {
-    tamanoActual = parseInt(btn.dataset.size, 10);
-    document.querySelectorAll(".size-btn")
+    tamanoActual = parseInt(btn.dataset.size, 10) || 8;
+    document.querySelectorAll(".tamanos button")
       .forEach(b => b.classList.toggle("active", b === btn));
   });
 });
 
 /* ============================================================
-   HERRAMIENTAS
+   INDICADOR DE ESTADO
 ============================================================ */
-document.getElementById("tool-brush").addEventListener("click", () => {
-  herramienta = "brush";
-  document.getElementById("tool-brush").classList.add("active");
-  document.getElementById("tool-eraser").classList.remove("active");
-});
-
-document.getElementById("tool-eraser").addEventListener("click", () => {
-  herramienta = "eraser";
-  document.getElementById("tool-eraser").classList.add("active");
-  document.getElementById("tool-brush").classList.remove("active");
-});
-
-document.getElementById("btn-undo").addEventListener("click", deshacer);
-
-document.getElementById("btn-clear").addEventListener("click", () => {
-  if (!confirm("¿Borrar todo el dibujo de hoy?")) return;
-  guardarEstadoUndo();
-  pintarFondo();
-  programarGuardar();
-});
+const statusEl = document.getElementById("status");
+function setStatus(estado) {
+  if (!statusEl) return;
+  statusEl.classList.remove("conectado", "guardando");
+  if (estado) statusEl.classList.add(estado);
+}
 
 /* ============================================================
    FIREBASE
@@ -184,16 +277,21 @@ const app  = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(app);
 const auth = getAuth(app);
 
-let firebaseListo = false;
-let docRef = null;
-
-function programarGuardar() {
+function programarGuardar(ms = 500) {
   clearTimeout(timeoutGuardar);
-  timeoutGuardar = setTimeout(guardarEnFirebase, 2000);
+  timeoutGuardar = setTimeout(guardarEnFirebase, ms);
 }
 
 async function guardarEnFirebase() {
   if (!firebaseListo || !docRef) return;
+  if (guardando) {
+    programarGuardar(300);
+    return;
+  }
+
+  guardando = true;
+  setStatus("guardando");
+
   try {
     const dataURL = canvas.toDataURL("image/png");
     await setDoc(docRef, {
@@ -202,31 +300,37 @@ async function guardarEnFirebase() {
       actualizadoEn: Date.now()
     });
     mostrarGuardado();
+    setStatus("conectado");
   } catch (err) {
     console.error("❌ Error guardando dibujo:", err);
+    setStatus(null);
+  } finally {
+    guardando = false;
   }
 }
 
 function mostrarGuardado() {
   const ind = document.getElementById("save-indicator");
+  if (!ind) return;
   ind.classList.add("visible");
   clearTimeout(ind._timeout);
-  ind._timeout = setTimeout(() => ind.classList.remove("visible"), 1400);
+  ind._timeout = setTimeout(() => ind.classList.remove("visible"), 1200);
 }
 
 async function initFirebase() {
   try {
     await signInAnonymously(auth);
+
     docRef = doc(db, "parejas", PAREJA_ID, "dibujos", hoyISO());
-    console.log("📡 Escuchando:", "parejas/" + PAREJA_ID + "/dibujos/" + hoyISO());
+    console.log("📡 Escuchando:", `parejas/${PAREJA_ID}/dibujos/${hoyISO()}`);
 
     onSnapshot(docRef, snap => {
-      // No sobreescribir mientras dibuja o hace menos de 3 seg de un trazo
-      if (dibujando) return;
-      if (Date.now() - ultimoTrazo < 3000) return;
-
       const data = snap.data();
       if (!data || !data.imagen) return;
+
+      // No pisar nuestro propio trazo en curso
+      if (esMiTrazo) return;
+      if (Date.now() - ultimoTrazo < 800) return;
 
       const img = new Image();
       img.onload = () => {
@@ -234,24 +338,39 @@ async function initFirebase() {
         ctx.drawImage(img, 0, 0, W, H);
         console.log("☁️ Dibujo sincronizado");
       };
+      img.onerror = () => console.warn("⚠️ No se pudo cargar la imagen del dibujo");
       img.src = data.imagen;
     }, err => {
       console.error("❌ Error en listener:", err);
+      setStatus(null);
     });
 
     firebaseListo = true;
+    setStatus("conectado");
     console.log("✅ Firebase listo");
   } catch (err) {
-    console.error("❌ Error en Firebase:", err);
+    console.error("❌ Error inicializando Firebase:", err);
+    setStatus(null);
   }
 }
 
 initFirebase();
 
-/* Guardar al salir de la página */
+/* ============================================================
+   GUARDAR AL SALIR
+============================================================ */
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && firebaseListo) {
     clearTimeout(timeoutGuardar);
     guardarEnFirebase();
   }
 });
+
+window.addEventListener("beforeunload", () => {
+  if (firebaseListo) {
+    clearTimeout(timeoutGuardar);
+    // No await — solo disparamos el guardado
+    guardarEnFirebase();
+  }
+});
+

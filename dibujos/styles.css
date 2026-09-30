@@ -258,3 +258,44 @@ canvas {
   .size-btn span { width: 6px !important; height: 6px !important; }
   .icon-btn { width: 40px; height: 40px; }
 }
+/* ============================================================
+   BOTÓN DE INSTALAR APP
+============================================================ */
+.btn-instalar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: .5px;
+  color: #2a1d12;
+  background: linear-gradient(135deg, #e0b87e, #c9985a);
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  box-shadow:
+    0 10px 26px rgba(200, 140, 80, .45),
+    inset 0 1px 0 rgba(255, 255, 255, .4);
+  z-index: 200;
+  animation: apareceInstalar .4s cubic-bezier(.2,.7,.3,1) both;
+}
+
+.btn-instalar svg {
+  width: 18px;
+  height: 18px;
+}
+
+.btn-instalar:active {
+  transform: translateX(-50%) scale(.96);
+}
+
+@keyframes apareceInstalar {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
