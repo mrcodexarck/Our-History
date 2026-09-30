@@ -1,0 +1,260 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: #241c17;
+  color: #f0e2c8;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================================
+   HEADER
+============================================================ */
+.app-header {
+  flex-shrink: 0;
+  height: 62px;
+  display: grid;
+  grid-template-columns: 60px 1fr 60px;
+  align-items: center;
+  padding: 0 6px;
+  background: linear-gradient(180deg, rgba(87,57,42,.85), rgba(46,28,19,.95));
+  border-bottom: 1px solid rgba(217,168,108,.25);
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+  z-index: 10;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #d9a86c;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .15s;
+}
+.icon-btn:active { background: rgba(217,168,108,.15); }
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn.placeholder { pointer-events: none; }
+
+.titulo { text-align: center; line-height: 1; }
+.fecha-dia {
+  display: block;
+  font-family: "Caveat", cursive;
+  font-size: 1.4rem;
+  color: #d9a86c;
+  line-height: 1;
+}
+.fecha-anio {
+  display: block;
+  font-size: .68rem;
+  letter-spacing: 2.5px;
+  color: rgba(217,168,108,.55);
+  text-transform: uppercase;
+  margin-top: 4px;
+  font-family: system-ui, sans-serif;
+}
+
+/* ============================================================
+   CANVAS
+============================================================ */
+.canvas-area {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.canvas-wrapper {
+  background: #fdfaf3;
+  border-radius: 14px;
+  box-shadow:
+    0 20px 40px rgba(0,0,0,.55),
+    0 0 0 1px rgba(217,168,108,.25),
+    inset 0 0 0 1px rgba(255,255,255,.4);
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ============================================================
+   BARRA DE COLORES
+============================================================ */
+.colors-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: linear-gradient(0deg, rgba(46,28,19,.5), transparent);
+}
+.colors-bar::-webkit-scrollbar { display: none; }
+
+.color-swatch {
+  flex: 0 0 34px;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(217,168,108,.35);
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  padding: 0;
+}
+.color-swatch:active { transform: scale(.9); }
+.color-swatch.active {
+  border-color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 3px rgba(217,168,108,.4);
+}
+
+/* ============================================================
+   TOOLBAR
+============================================================ */
+.toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 10px 12px 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(15,10,8,.98), rgba(46,28,19,.85));
+  border-top: 1px solid rgba(217,168,108,.25);
+  box-shadow: 0 -4px 16px rgba(0,0,0,.4);
+}
+
+.tool-btn {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid rgba(217,168,108,.2);
+  color: #c9b48e;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all .15s;
+}
+.tool-btn:active {
+  background: rgba(217,168,108,.2);
+  transform: scale(.92);
+}
+.tool-btn.active {
+  background: linear-gradient(135deg, #d9a86c, #b58a5a);
+  color: #2a1d12;
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(217,168,108,.25);
+}
+.tool-btn.danger {
+  color: #e88a7a;
+  border-color: rgba(232,138,122,.3);
+}
+.tool-btn svg { width: 20px; height: 20px; }
+
+.sizes {
+  display: flex;
+  gap: 2px;
+  padding: 0 6px;
+  border-left: 1px solid rgba(217,168,108,.15);
+  border-right: 1px solid rgba(217,168,108,.15);
+}
+.size-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all .15s;
+}
+.size-btn span {
+  display: block;
+  background: #c9b48e;
+  border-radius: 50%;
+  transition: background .15s;
+}
+.size-btn.active {
+  background: rgba(217,168,108,.18);
+}
+.size-btn.active span {
+  background: #d9a86c;
+}
+
+/* ============================================================
+   INDICADOR DE GUARDADO
+============================================================ */
+.save-indicator {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: rgba(45, 100, 55, .95);
+  color: #fff;
+  border-radius: 30px;
+  font-size: .85rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.save-indicator.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.save-indicator svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ============================================================
+   RESPONSIVE (landscape / pantallas bajas)
+============================================================ */
+@media (max-height: 600px) {
+  .app-header { height: 50px; }
+  .fecha-dia { font-size: 1.15rem; }
+  .fecha-anio { font-size: .6rem; margin-top: 2px; }
+  .color-swatch { flex: 0 0 28px; width: 28px; height: 28px; }
+  .colors-bar { padding: 6px 12px; }
+  .toolbar { padding: 6px 12px 10px; }
+  .tool-btn { flex: 0 0 38px; width: 38px; height: 38px; }
+  .tool-btn svg { width: 17px; height: 17px; }
+  .size-btn { width: 30px; height: 30px; }
+  .size-btn span { width: 6px !important; height: 6px !important; }
+  .icon-btn { width: 40px; height: 40px; }
+}
