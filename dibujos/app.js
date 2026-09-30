@@ -34,26 +34,36 @@ function pintarFondo() {
   ctx.fillStyle = COLOR_FONDO;
   ctx.fillRect(0, 0, W, H);
 }
-pintarFondo();
 
 /* ============================================================
    ESTADO
 ============================================================ */
 let colorActual  = "#3b322b";
 let tamanoActual = 8;
-let herramienta  = "lapiz";           // lapiz | marcador | pincel | borrador
+let herramienta  = "lapiz";
 let dibujando    = false;
 let ultimoPunto  = null;
 let ultimoTrazo  = 0;
 let esMiTrazo    = false;
 
 let firebaseListo = false;
-let docRef        = null;
 let guardando     = false;
 let timeoutGuardar = null;
 
+/* Hoja actual: 1 o 2 */
+let hojaActual = 1;
+
+/* Estado local de cada hoja (imagen en memoria) */
+const estadoHojas = {
+  1: { imagen: null },
+  2: { imagen: null }
+};
+
+/* docRefs para cada hoja */
+const docRefs = { 1: null, 2: null };
+
 /* ============================================================
-   UNDO (deshacer)
+   UNDO
 ============================================================ */
 const undoStack = [];
 const MAX_UNDO = 15;
@@ -62,9 +72,7 @@ function guardarEstadoUndo() {
   try {
     undoStack.push(ctx.getImageData(0, 0, W, H));
     if (undoStack.length > MAX_UNDO) undoStack.shift();
-  } catch (e) {
-    console.warn("No se pudo guardar undo:", e);
-  }
+  } catch (e) { /* silencioso */ }
 }
 
 function deshacer() {
@@ -75,7 +83,7 @@ function deshacer() {
 }
 
 /* ============================================================
-   HELPERS DE TRAZO
+   DIBUJO
 ============================================================ */
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -99,9 +107,6 @@ function estilosDeTrazo() {
   }
 }
 
-/* ============================================================
-   DIBUJO — POINTER EVENTS
-============================================================ */
 canvas.addEventListener("pointerdown", e => {
   if (e.pointerType === "touch" && e.isPrimary === false) return;
   canvas.setPointerCapture(e.pointerId);
@@ -118,7 +123,6 @@ canvas.addEventListener("pointerdown", e => {
   ctx.globalAlpha = s.alpha;
   ctx.fill();
   ctx.globalAlpha = 1;
-
   e.preventDefault();
 });
 
@@ -140,13 +144,11 @@ canvas.addEventListener("pointermove", e => {
 
   ultimoPunto = p;
   ultimoTrazo = Date.now();
-
-  // Guardado en tiempo real: cada 500ms mientras dibuja
   programarGuardar(500);
   e.preventDefault();
 });
 
-function terminarTrazo(e) {
+function terminarTrazo() {
   if (!dibujando) return;
   dibujando = false;
   esMiTrazo = false;
@@ -158,6 +160,55 @@ function terminarTrazo(e) {
 canvas.addEventListener("pointerup", terminarTrazo);
 canvas.addEventListener("pointercancel", terminarTrazo);
 canvas.addEventListener("pointerleave", terminarTrazo);
+
+/* ============================================================
+   TABS DE HOJAS
+============================================================ */
+const tabsHoja = document.querySelectorAll(".tabs-hojas .tab");
+
+tabsHoja.forEach(tab => {
+  tab.addEventListener("click", () => {
+    const n = parseInt(tab.dataset.hoja, 10);
+    if (n === hojaActual) return;
+    cambiarHoja(n);
+  });
+});
+
+function cambiarHoja(nuevaHoja) {
+  // 1. Guardar la hoja actual
+  estadoHojas[hojaActual].imagen = canvas.toDataURL("image/png");
+
+  // 2. Cambiar
+  hojaActual = nuevaHoja;
+
+  // 3. Actualizar tabs
+  tabsHoja.forEach(t => {
+    t.classList.toggle("active", parseInt(t.dataset.hoja, 10) === nuevaHoja);
+  });
+
+  // 4. Pintar la otra hoja
+  const img = estadoHojas[hojaActual].imagen;
+  if (img) {
+    dibujarImagen(img);
+  } else {
+    pintarFondo();
+  }
+
+  // 5. Limpiar el undo (porque era de la otra hoja)
+  undoStack.length = 0;
+
+  console.log(`📄 Cambiado a hoja ${hojaActual}`);
+}
+
+function dibujarImagen(dataURL) {
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(img, 0, 0, W, H);
+  };
+  img.onerror = () => console.warn("⚠️ No se pudo cargar imagen");
+  img.src = dataURL;
+}
 
 /* ============================================================
    PALETA DE LÁPICES
@@ -217,7 +268,7 @@ function seleccionarColor(hex, btnEl) {
 renderLapices();
 
 /* ============================================================
-   HERRAMIENTAS (lápiz, marcador, pincel, borrador)
+   HERRAMIENTAS
 ============================================================ */
 document.querySelectorAll(".tool[data-tool]").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -236,20 +287,6 @@ document.querySelectorAll(".tool[data-tool]").forEach(btn => {
 });
 
 /* ============================================================
-   BOTONES LIMPIAR Y DESHACER
-============================================================ */
-const btnUndo  = document.getElementById("btn-undo");
-const btnClear = document.getElementById("btn-clear");
-
-if (btnUndo)  btnUndo.addEventListener("click", deshacer);
-if (btnClear) btnClear.addEventListener("click", () => {
-  if (!confirm("¿Borrar todo el dibujo de hoy?")) return;
-  guardarEstadoUndo();
-  pintarFondo();
-  programarGuardar(100);
-});
-
-/* ============================================================
    TAMAÑOS
 ============================================================ */
 document.querySelectorAll(".tamanos button").forEach(btn => {
@@ -259,6 +296,41 @@ document.querySelectorAll(".tamanos button").forEach(btn => {
       .forEach(b => b.classList.toggle("active", b === btn));
   });
 });
+
+/* ============================================================
+   BOTONES UNDO / CLEAR
+============================================================ */
+const btnUndo  = document.getElementById("btn-undo");
+const btnClear = document.getElementById("btn-clear");
+
+if (btnUndo)  btnUndo.addEventListener("click", deshacer);
+if (btnClear) btnClear.addEventListener("click", () => {
+  if (!confirm("¿Borrar todo el dibujo de esta hoja?")) return;
+  guardarEstadoUndo();
+  pintarFondo();
+  programarGuardar(100);
+});
+
+/* ============================================================
+   DRAWER MÓVIL
+============================================================ */
+const panelHerramientas = document.getElementById("panel-herramientas");
+const btnToolsMobile    = document.getElementById("btn-tools-mobile");
+const drawerOverlay     = document.getElementById("drawer-overlay");
+const drawerCerrar      = document.getElementById("drawer-cerrar");
+
+function abrirDrawer() {
+  panelHerramientas?.classList.add("abierto");
+  drawerOverlay?.classList.add("visible");
+}
+function cerrarDrawer() {
+  panelHerramientas?.classList.remove("abierto");
+  drawerOverlay?.classList.remove("visible");
+}
+
+btnToolsMobile?.addEventListener("click", abrirDrawer);
+drawerCerrar?.addEventListener("click", cerrarDrawer);
+drawerOverlay?.addEventListener("click", cerrarDrawer);
 
 /* ============================================================
    INDICADOR DE ESTADO
@@ -283,7 +355,9 @@ function programarGuardar(ms = 500) {
 }
 
 async function guardarEnFirebase() {
-  if (!firebaseListo || !docRef) return;
+  if (!firebaseListo) return;
+  const docRef = docRefs[hojaActual];
+  if (!docRef) return;
   if (guardando) {
     programarGuardar(300);
     return;
@@ -294,8 +368,11 @@ async function guardarEnFirebase() {
 
   try {
     const dataURL = canvas.toDataURL("image/png");
+    estadoHojas[hojaActual].imagen = dataURL;
+
     await setDoc(docRef, {
       imagen: dataURL,
+      hoja: hojaActual,
       fecha: hoyISO(),
       actualizadoEn: Date.now()
     });
@@ -321,29 +398,33 @@ async function initFirebase() {
   try {
     await signInAnonymously(auth);
 
-    docRef = doc(db, "parejas", PAREJA_ID, "dibujos", hoyISO());
-    console.log("📡 Escuchando:", `parejas/${PAREJA_ID}/dibujos/${hoyISO()}`);
+    const base = `parejas/${PAREJA_ID}/dibujos`;
+    docRefs[1] = doc(db, "parejas", PAREJA_ID, "dibujos", `${hoyISO()}-1`);
+    docRefs[2] = doc(db, "parejas", PAREJA_ID, "dibujos", `${hoyISO()}-2`);
 
-    onSnapshot(docRef, snap => {
+    console.log("📡 Escuchando:", base + "/" + hoyISO() + "-1 y -2");
+
+    // Listener hoja 1
+    onSnapshot(docRefs[1], snap => {
       const data = snap.data();
       if (!data || !data.imagen) return;
+      estadoHojas[1].imagen = data.imagen;
+      if (hojaActual === 1 && !esMiTrazo && Date.now() - ultimoTrazo > 800) {
+        dibujarImagen(data.imagen);
+        console.log("☁️ Hoja 1 sincronizada");
+      }
+    }, err => console.error("❌ Listener hoja 1:", err));
 
-      // No pisar nuestro propio trazo en curso
-      if (esMiTrazo) return;
-      if (Date.now() - ultimoTrazo < 800) return;
-
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, W, H);
-        ctx.drawImage(img, 0, 0, W, H);
-        console.log("☁️ Dibujo sincronizado");
-      };
-      img.onerror = () => console.warn("⚠️ No se pudo cargar la imagen del dibujo");
-      img.src = data.imagen;
-    }, err => {
-      console.error("❌ Error en listener:", err);
-      setStatus(null);
-    });
+    // Listener hoja 2
+    onSnapshot(docRefs[2], snap => {
+      const data = snap.data();
+      if (!data || !data.imagen) return;
+      estadoHojas[2].imagen = data.imagen;
+      if (hojaActual === 2 && !esMiTrazo && Date.now() - ultimoTrazo > 800) {
+        dibujarImagen(data.imagen);
+        console.log("☁️ Hoja 2 sincronizada");
+      }
+    }, err => console.error("❌ Listener hoja 2:", err));
 
     firebaseListo = true;
     setStatus("conectado");
@@ -355,6 +436,7 @@ async function initFirebase() {
 }
 
 initFirebase();
+pintarFondo();
 
 /* ============================================================
    GUARDAR AL SALIR
@@ -369,8 +451,6 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("beforeunload", () => {
   if (firebaseListo) {
     clearTimeout(timeoutGuardar);
-    // No await — solo disparamos el guardado
     guardarEnFirebase();
   }
 });
-
