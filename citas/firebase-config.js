@@ -1,11 +1,9 @@
 /* ============================================================
    CONFIGURACIÓN DE FIREBASE
-   Solo exportamos los datos. La inicialización la hace
-   index.html con el SDK desde CDN.
 ============================================================ */
 
 export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCZh7uVrDnXQfq7qQvi1krx_VYOowIrI8",
+  apiKey: "AIzaSyCZh7uVrDnXOFqf7qQvi1krx_VYOowIrI8",
   authDomain: "base-de-datos-love.firebaseapp.com",
   projectId: "base-de-datos-love",
   storageBucket: "base-de-datos-love.firebasestorage.app",
