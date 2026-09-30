@@ -17,7 +17,6 @@ let estadoActual = "todas";
 
 let docRef = null;
 let firebaseListo = false;
-let guardando = false;
 
 /* ============================================================
    AGRUPAR POR CATEGORÍA
@@ -81,7 +80,10 @@ function marcarIdea(id, itemEl) {
   hechas[id] = !hechas[id];
   if (itemEl) itemEl.classList.toggle("hecho", hechas[id]);
   actualizarProgreso();
-  guardarEstado();
+
+  // Guardar SOLO esta idea (no todo el objeto)
+  localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+  guardarUnaIdea(id, hechas[id]);
 }
 
 function actualizarItem(id) {
@@ -174,14 +176,25 @@ async function initFirebase() {
     const data = snap.data();
     if (!data || !data.hechas) return;
 
-    hechas = data.hechas;
-    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+    // Actualizar solo las ideas que cambiaron
+    const nuevas = data.hechas;
+    let huboCambios = false;
 
-    IDEAS.forEach((_, id) => actualizarItem(id));
-    actualizarProgreso();
-    aplicarFiltros();
+    Object.keys(nuevas).forEach(id => {
+      const valor = nuevas[id] === true;
+      if (hechas[id] !== valor) {
+        hechas[id] = valor;
+        actualizarItem(id);
+        huboCambios = true;
+      }
+    });
 
-    console.log("☁️ Sincronizado desde Firebase");
+    if (huboCambios) {
+      localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+      actualizarProgreso();
+      aplicarFiltros();
+      console.log("☁️ Sincronizado desde Firebase");
+    }
   }, err => {
     console.error("Error escuchando cambios:", err);
   });
@@ -190,20 +203,15 @@ async function initFirebase() {
   console.log("✅ Firebase listo");
 }
 
-async function guardarEstado() {
-  localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
-
+async function guardarUnaIdea(id, valor) {
   if (!firebaseListo || !docRef) return;
-  if (guardando) return;
 
-  guardando = true;
   try {
-    const { setDoc } = window.FIREBASE;
-    await setDoc(docRef, { hechas, updatedAt: Date.now() }, { merge: true });
+    const { updateDoc } = window.FIREBASE;
+    await updateDoc(docRef, { [`hechas.${id}`]: valor });
+    console.log(`💾 Guardado: idea ${id} = ${valor}`);
   } catch (err) {
     console.error("Error guardando en Firebase:", err);
-  } finally {
-    guardando = false;
   }
 }
 
@@ -220,6 +228,7 @@ window.CitasApp = {
     hechas[id] = true;
     actualizarItem(id);
     actualizarProgreso();
-    guardarEstado();
+    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(hechas));
+    guardarUnaIdea(id, true);
   }
 };
