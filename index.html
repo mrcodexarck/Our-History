@@ -297,8 +297,33 @@ form.addEventListener("submit", async (e) => {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./sw.js", { scope: "./" })
-        .then(reg => console.log("✅ Service Worker registrado:", reg.scope))
-        .catch(err => console.error("❌ Error SW:", err));
+        .then(reg => {
+          console.log("✅ Service Worker registrado");
+
+          reg.addEventListener("updatefound", () => {
+            const nuevoSW = reg.installing;
+            nuevoSW.addEventListener("statechange", () => {
+              if (nuevoSW.state === "installed" && navigator.serviceWorker.controller) {
+                console.log("🔄 Nueva versión disponible");
+                nuevoSW.postMessage("SKIP_WAITING");
+              }
+            });
+          });
+
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+              reg.update();
+            }
+          });
+        })
+        .catch(err => console.error("❌ SW error:", err));
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
     });
   }
 </script>
