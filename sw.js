@@ -1,6 +1,6 @@
 /* ============================================================
-   SERVICE WORKER — DESACTIVADO TEMPORALMENTE
-   Este SW se autoelimina y limpia todos los cachés.
+   SERVICE WORKER — autodestructivo temporal
+   Fuerza la limpieza de todos los cachés viejos.
 ============================================================ */
 
 self.addEventListener("install", () => {
@@ -13,14 +13,16 @@ self.addEventListener("activate", event => {
       .then(keys => Promise.all(keys.map(k => caches.delete(k))))
       .then(() => self.clients.matchAll())
       .then(clients => {
-        clients.forEach(c => c.navigate(c.url));
+        clients.forEach(c => {
+          try { c.navigate(c.url); } catch(e) {}
+        });
       })
       .then(() => self.registration.unregister())
-      .then(() => console.log("🧹 SW eliminado y caches limpiados"))
+      .then(() => console.log("🧹 SW limpiado y desregistrado"))
   );
 });
 
-self.addEventListener("fetch", event => {
-  // No cachear nada — dejar pasar todo a la red
+self.addEventListener("fetch", () => {
+  // Sin cache: todo va directo a la red
   return;
 });
