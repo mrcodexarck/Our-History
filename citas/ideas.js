@@ -92,7 +92,7 @@ const IDEAS = [
   { cat: "🏞️ Aire libre", txt: "Hacer una noche de camping en el patio" },
   { cat: "🏞️ Aire libre", txt: "Ir a una granja y recoger frutas" },
   { cat: "🏞️ Aire libre", txt: "Hacer una caminata nocturna con linternas" },
-  { cat: "🏞️ Aire libre", txt: "Ir a un mariposario" },
+  { cat: "🏞️ Aire libre", txt: "Ir a un museo" },
   { cat: "🏞️ Aire libre", txt: "Visitar un volcán o cráter" },
   { cat: "🏞️ Aire libre", txt: "Hacer un tour de árboles o tirolesa" },
 
