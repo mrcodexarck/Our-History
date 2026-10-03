@@ -312,6 +312,12 @@
   from { opacity: 0; transform: translateY(15px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* Ocultar botón de instalar cuando la app está instalada */
+@media (display-mode: standalone) {
+  .btn-instalar {
+    display: none !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -549,47 +555,55 @@ actualizar();
 </script>
 
 <script>
-  // PWA — botón instalar
+  // ============================================================
+  // PWA - Botón instalar (SOLO si NO está instalada)
+  // ============================================================
+  
+  function estaInstalada() {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  }
+
   let deferredPrompt = null;
   const installBtn = document.getElementById("btn-instalar");
 
-  window.addEventListener("beforeinstallprompt", e => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (installBtn) installBtn.hidden = false;
-    console.log("📲 App lista para instalar");
-  });
-
-  if (installBtn) {
-    installBtn.addEventListener("click", async () => {
-      if (!deferredPrompt) {
-        alert(
-          "Tu navegador no permite instalación automática.\n\n" +
-          "En iPhone: toca Compartir → Añadir a pantalla de inicio.\n" +
-          "En Android: menú del navegador → Instalar app."
-        );
-        return;
-      }
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log("👤 Elección:", outcome);
-      deferredPrompt = null;
-      installBtn.hidden = true;
+  if (estaInstalada()) {
+    console.log("📱 App ya instalada → botón oculto");
+    if (installBtn) installBtn.hidden = true;
+  } else {
+    window.addEventListener("beforeinstallprompt", e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) installBtn.hidden = false;
+      console.log("📲 App lista para instalar");
     });
-  }
 
-  window.addEventListener("appinstalled", () => {
-    console.log("✅ App instalada");
-    if (installBtn) installBtn.hidden = true;
-    deferredPrompt = null;
-  });
+    window.addEventListener("appinstalled", () => {
+      if (installBtn) installBtn.hidden = true;
+      deferredPrompt = null;
+      console.log("✅ App instalada, ocultando botón");
+    });
 
-  // Si ya está corriendo como app instalada, no mostrar el botón
-  if (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true
-  ) {
-    if (installBtn) installBtn.hidden = true;
+    if (installBtn) {
+      installBtn.addEventListener("click", async () => {
+        if (!deferredPrompt) {
+          alert(
+            "Tu navegador no permite instalación automática.\n\n" +
+            "En iPhone: toca Compartir → Añadir a pantalla de inicio.\n" +
+            "En Android: menú del navegador → Instalar app."
+          );
+          return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log("👉 Elección:", outcome);
+        deferredPrompt = null;
+        installBtn.hidden = true;
+      });
+    }
   }
 </script>
 

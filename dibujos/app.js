@@ -572,4 +572,24 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+/* ============================================================
+   OCULTAR BOTÓN DE INSTALAR SI YA ESTÁ INSTALADA (PWA)
+============================================================ */
+function estaInstalada() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes('android-app://')
+  );
+}
+
+// Busca todos los botones de instalar (ajusta el selector según tu HTML)
+const botonesInstalar = document.querySelectorAll(
+  '#btn-instalar, .btn-instalar, [data-install]'
+);
+
+if (estaInstalada()) {
+  botonesInstalar.forEach(btn => btn.style.display = 'none');
+  console.log('📱 App ya instalada → ocultando botón de instalar');
+}
 
