@@ -385,151 +385,153 @@ canvas {
 /* ============================================================
    RESPONSIVE — MÓVIL
 ============================================================ */
+/* ============================================================
+   RESPONSIVE — MÓVIL (Optimizado para Pintar)
+============================================================ */
 @media (max-width: 768px) {
-  .app-header { height: 50px; }
-  .fecha-dia { font-size: 1.15rem; }
-  .fecha-anio { font-size: .6rem; margin-top: 2px; }
-
+  /* --- 1. ENCABEZADO Y PESTAÑAS MÁS COMPACTOS --- */
+  .app-header { 
+    height: 44px; /* Reducido de 56px a 44px */
+    padding: 0 4px;
+  }
+  .fecha-dia { font-size: 1rem; }
+  .fecha-anio { font-size: 0.55rem; margin-top: 1px; }
+  
   .tabs-hojas {
-    padding: 8px 12px 0;
+    padding: 6px 8px 0;
     gap: 6px;
   }
   .tabs-hojas .tab {
-    padding: 7px 14px;
-    font-size: .88rem;
+    padding: 6px 12px;
+    font-size: 0.8rem;
   }
   .tabs-hojas .tab .tab-num {
-    width: 20px; height: 20px;
-    font-size: .75rem;
+    width: 18px; height: 18px;
+    font-size: 0.7rem;
   }
 
-  /* Panel fijo al fondo, oculto hasta que se abre */
+  /* --- 2. LIENZO (CANVAS) CON MÁS ESPACIO --- */
+  .canvas-area {
+    padding: 8px 8px 80px 8px; /* Dejamos espacio abajo para el botón flotante */
+  }
+  .canvas-wrapper {
+    border-radius: 8px; /* Un poco menos redondeado para aprovechar espacio */
+  }
+
+  /* --- 3. PANEL DE HERRAMIENTAS (BOTTOM SHEET NATIVO) --- */
   .panel-herramientas {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    max-height: 68vh;
+    max-height: 70vh;
     overflow-y: auto;
-    background: linear-gradient(180deg, rgba(30,20,14,.99), rgba(15,10,8,1));
-    border-top-left-radius: 22px;
-    border-top-right-radius: 22px;
-    box-shadow: 0 -10px 40px rgba(0,0,0,.7);
+    /* Efecto cristal (Glassmorphism) más moderno */
+    background: rgba(30, 20, 14, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,.8);
     transform: translateY(105%);
-    transition: transform .35s cubic-bezier(.2,.7,.3,1);
+    transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
     z-index: 150;
-    padding: 6px 0 max(16px, env(safe-area-inset-bottom));
+    padding: 6px 0 max(20px, env(safe-area-inset-bottom));
   }
   .panel-herramientas.abierto {
     transform: translateY(0);
   }
 
+  /* Asa del panel (Handle) más visible */
   .drawer-handle {
     display: block;
-    width: 44px;
-    height: 4px;
-    background: rgba(217,168,108,.4);
-    border-radius: 4px;
-    margin: 8px auto 6px;
+    width: 48px;
+    height: 5px;
+    background: rgba(217,168,108,.5);
+    border-radius: 5px;
+    margin: 10px auto 12px;
   }
-  .drawer-cerrar {
-    display: grid;
-    position: absolute;
-    top: 14px; right: 14px;
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    background: rgba(217,168,108,.15);
-    border: none;
-    color: #d9a86c;
-    font-size: 1rem;
-    place-items: center;
-    cursor: pointer;
-    z-index: 2;
+
+  /* --- 4. PALETA DE COLORES MÁS TÁCTIL --- */
+  .paleta { padding: 10px 14px 10px; }
+  .paleta-titulo { font-size: 0.9rem; margin-bottom: 8px; }
+  .lapices { 
+    gap: 10px; 
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory; /* Hace que el scroll sea suave */
   }
-  .drawer-cerrar:active { background: rgba(217,168,108,.3); }
+  .lapiz { 
+    flex: 0 0 40px; /* Más ancho para dedos */
+    height: 52px; /* Más alto */
+    scroll-snap-align: start;
+  }
+  .lapiz .cuerpo { width: 24px; height: 36px; }
 
-  .paleta { padding: 12px 14px 8px; }
-  .paleta-titulo { font-size: 1rem; margin-bottom: 10px; }
-  .lapices { gap: 8px; padding-bottom: 8px; }
-  .lapiz { flex: 0 0 36px; height: 48px; }
-  .lapiz .cuerpo { width: 22px; height: 34px; }
-
+  /* --- 5. HERRAMIENTAS EN CUADRÍCULA (MÁS ORDENADO) --- */
   .herramientas {
-    padding: 12px 14px 10px;
-    flex-wrap: wrap;
-    justify-content: center;
+    padding: 10px 14px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 columnas exactas */
+    gap: 10px;
+    border-top: none;
   }
   .tool {
-    flex: 0 0 auto;
-    min-width: 72px;
-    padding: 10px 8px 8px;
+    flex: 1 1 auto;
+    min-width: unset;
+    padding: 10px 4px;
+    border-radius: 12px;
   }
-  .tool svg { width: 24px; height: 24px; }
-  .tool span { font-size: .72rem; }
+  .tool svg { width: 26px; height: 26px; } /* Iconos más grandes */
+  .tool span { font-size: 0.65rem; }
 
+  /* --- 6. TAMAÑOS DE PINCEL MÁS GRANDES --- */
   .tamanos {
-    padding: 10px 14px 16px;
-    background: transparent;
+    padding: 10px 14px 20px;
+    gap: 12px;
   }
   .tamanos button {
-    width: 44px;
-    height: 44px;
+    width: 48px; /* Área táctil recomendada */
+    height: 48px;
   }
 
-  /* Botón flotante para abrir el drawer */
+  /* --- 7. BOTÓN FLOTANTE (FAB) MINIMALISTA --- */
   .btn-tools-mobile {
-    display: inline-flex;
+    display: grid; /* Centrado perfecto */
+    place-items: center;
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 14px 22px 14px 18px;
+    bottom: 24px;
+    right: 24px;
+    width: 60px;  /* Botón circular */
+    height: 60px;
+    padding: 0;
     background: linear-gradient(135deg, #e0b87e, #c9985a);
     color: #2a1d12;
-    font-family: inherit;
-    font-size: 1rem;
-    font-weight: 700;
     border: none;
-    border-radius: 40px;
-    box-shadow:
-      0 10px 26px rgba(200,140,80,.5),
-      inset 0 1px 0 rgba(255,255,255,.4);
+    border-radius: 50%; /* Totalmente redondo */
+    box-shadow: 0 8px 24px rgba(200,140,80,.5), inset 0 1px 0 rgba(255,255,255,.4);
     cursor: pointer;
-    gap: 8px;
-    align-items: center;
     z-index: 100;
     transition: transform .2s, box-shadow .2s;
   }
-  .btn-tools-mobile svg { width: 20px; height: 20px; }
+  /* Ocultamos el texto si hay, o lo hacemos más pequeño */
+  .btn-tools-mobile span { display: none; } 
+  .btn-tools-mobile svg { width: 28px; height: 28px; }
+  
   .btn-tools-mobile:active {
-    transform: scale(.96);
-    box-shadow: 0 6px 16px rgba(200,140,80,.6);
+    transform: scale(.92);
+    box-shadow: 0 4px 12px rgba(200,140,80,.6);
   }
 
-  /* Overlay */
+  /* --- 8. OVERLAY OSCURO --- */
   .drawer-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.55);
-    backdrop-filter: blur(3px);
-    z-index: 140;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .3s;
-  }
-  .drawer-overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(4px);
   }
 
-  /* Toast más arriba para no chocar con el botón */
+  /* --- 9. TOAST DE GUARDADO --- */
   .save-indicator {
     top: auto;
-    bottom: 90px;
-    transform: translate(-50%, 20px);
-  }
-  .save-indicator.visible {
-    transform: translate(-50%, 0);
+    bottom: 100px;
   }
 }
 
