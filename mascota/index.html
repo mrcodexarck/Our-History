@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#241c17" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
 <title>Nuestra Mascota</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -12,77 +11,195 @@
 <body>
 
 <header class="app-header">
-  <a href="../menu.html" class="icon-btn" aria-label="Volver">
+  <button class="icon-btn" id="btn-volver" aria-label="Volver">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-  </a>
+  </button>
   <div class="titulo">
-    <span class="fecha-dia">Nuestra Mascota</span>
-    <span class="fecha-anio">Cuidándola juntos</span>
+    <span class="fecha-dia" id="titulo-pantalla">Nuestra Mascota</span>
+    <span class="fecha-anio" id="subtitulo-pantalla">Cuidándola juntos</span>
   </div>
   <div class="status" id="status"><span class="dot"></span></div>
 </header>
 
-<!-- PANTALLA CREAR MASCOTA -->
-<section class="crear-mascota" id="crear-mascota" hidden>
-  <h2>Elige a nuestra mascota</h2>
-  <div class="tipos">
-    <button class="tipo" data-tipo="gato">🐱<span>Gato</span></button>
-    <button class="tipo" data-tipo="perro">🐶<span>Perro</span></button>
-    <button class="tipo" data-tipo="dragon">🐲<span>Dragón</span></button>
-    <button class="tipo" data-tipo="conejo">🐰<span>Conejo</span></button>
-  </div>
-  <input type="text" id="nombre-mascota" maxlength="15" placeholder="Ponle un nombre..." />
-  <button class="btn-crear" id="btn-crear" disabled>Crear mascota ✨</button>
-</section>
+<main class="pantallas">
 
-<!-- PANTALLA MASCOTA -->
-<section class="mascota-area" id="mascota-area" hidden>
-
-  <div class="mascota-stage">
-    <div class="mascota-bubble" id="mascota-bubble">¡Hola!</div>
-    <div class="mascota-avatar" id="mascota-avatar">🐱</div>
-    <div class="mascota-nombre" id="mascota-nombre">—</div>
-    <div class="mascota-info">
-      <span class="nivel">Nivel <b id="mascota-nivel">1</b></span>
-      <div class="xp-bar"><div class="xp-fill" id="xp-fill"></div></div>
+  <!-- CREAR MASCOTA -->
+  <section class="pantalla activa" data-pantalla="crear" id="pantalla-crear">
+    <div class="crear-mascota">
+      <h2>Elige a nuestra mascota</h2>
+      <div class="tipos">
+        <button class="tipo" data-tipo="conejo">🐰<span>Conejo</span></button>
+        <button class="tipo" data-tipo="gato">🐱<span>Gato</span></button>
+        <button class="tipo" data-tipo="perro">🐶<span>Perro</span></button>
+        <button class="tipo" data-tipo="dragon">🐲<span>Dragón</span></button>
+      </div>
+      <input type="text" id="nombre-mascota" maxlength="15" placeholder="Ponle un nombre..." />
+      <button class="btn-crear" id="btn-crear" disabled>Crear mascota ✨</button>
     </div>
-  </div>
+  </section>
 
-  <div class="panel-inferior">
-    <div class="stats">
-      <div class="stat">
-        <span class="stat-icon">🍖</span>
-        <div class="stat-bar"><div class="stat-fill" id="stat-hambre"></div></div>
-        <span class="stat-num" id="num-hambre">100%</span>
+  <!-- HOME -->
+  <section class="pantalla" data-pantalla="home" id="pantalla-home">
+    <div class="escena" id="escena-home">
+      <div class="capa-fondo" id="fondo-home"></div>
+      <div class="capa-objetos" id="objetos-home"></div>
+
+      <div class="mascota-wrapper" id="mascota-home">
+        <div class="particulas" id="particulas-home"></div>
+        <svg class="mascota-svg" id="mascota-svg" viewBox="0 0 220 280">
+          <ellipse cx="110" cy="265" rx="60" ry="6" fill="rgba(0,0,0,.3)"/>
+          <g id="orejas">
+            <ellipse cx="80" cy="60" rx="16" ry="50" fill="var(--color-principal)" transform="rotate(-20 80 60)"/>
+            <ellipse cx="80" cy="60" rx="8" ry="40" fill="var(--color-rosa)" transform="rotate(-20 80 60)"/>
+            <ellipse cx="140" cy="60" rx="16" ry="50" fill="var(--color-principal)" transform="rotate(20 140 60)"/>
+            <ellipse cx="140" cy="60" rx="8" ry="40" fill="var(--color-rosa)" transform="rotate(20 140 60)"/>
+          </g>
+          <circle id="cola" cx="175" cy="200" r="18" fill="var(--color-claro)"/>
+          <ellipse cx="78" cy="245" rx="18" ry="11" fill="var(--color-claro)"/>
+          <ellipse cx="142" cy="245" rx="18" ry="11" fill="var(--color-claro)"/>
+          <ellipse cx="110" cy="195" rx="58" ry="58" fill="var(--color-principal)"/>
+          <ellipse cx="110" cy="205" rx="35" ry="40" fill="var(--color-claro)"/>
+          <g id="cabeza">
+            <ellipse cx="110" cy="130" rx="60" ry="52" fill="var(--color-principal)"/>
+            <circle cx="65" cy="148" r="11" fill="var(--color-rosa)" opacity=".5"/>
+            <circle cx="155" cy="148" r="11" fill="var(--color-rosa)" opacity=".5"/>
+            <g class="ojos">
+              <ellipse cx="85" cy="125" rx="8" ry="10" fill="#2a1d12"/>
+              <ellipse cx="135" cy="125" rx="8" ry="10" fill="#2a1d12"/>
+              <circle cx="87" cy="122" r="3" fill="#fff"/>
+              <circle cx="137" cy="122" r="3" fill="#fff"/>
+            </g>
+            <path class="parpado" d="M77 125 Q85 119 93 125" stroke="#2a1d12" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path class="parpado" d="M127 125 Q135 119 143 125" stroke="#2a1d12" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path class="boca boca-feliz" d="M104 156 Q110 160 116 156" stroke="#2a1d12" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path class="boca boca-triste" d="M104 162 Q110 156 116 162" stroke="#2a1d12" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path class="boca boca-enojado" d="M104 160 L110 156 L116 160" stroke="#2a1d12" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <ellipse class="boca boca-hambriento" cx="110" cy="159" rx="7" ry="8" fill="#2a1d12"/>
+            <path d="M110 143 Q105 138 102 143 Q102 148 110 152 Q118 148 118 143 Q115 138 110 143 Z" fill="#e88ea7"/>
+            <line x1="110" y1="152" x2="110" y2="158" stroke="#2a1d12" stroke-width="1.5"/>
+            <rect x="106" y="159" width="4" height="5" fill="#fff" stroke="#2a1d12" stroke-width=".5"/>
+            <rect x="110" y="159" width="4" height="5" fill="#fff" stroke="#2a1d12" stroke-width=".5"/>
+            <g opacity=".5" stroke="#2a1d12" stroke-width="1">
+              <line x1="55" y1="145" x2="75" y2="147"/>
+              <line x1="55" y1="155" x2="75" y2="155"/>
+              <line x1="165" y1="145" x2="145" y2="147"/>
+              <line x1="165" y1="155" x2="145" y2="155"/>
+            </g>
+          </g>
+          <g class="zzz">
+            <text x="175" y="100" font-size="18" fill="#d9a86c" font-family="Caveat, cursive">z</text>
+            <text x="190" y="80" font-size="22" fill="#d9a86c" font-family="Caveat, cursive">z</text>
+            <text x="205" y="58" font-size="26" fill="#d9a86c" font-family="Caveat, cursive">z</text>
+          </g>
+        </svg>
+        <img class="mascota-img" id="mascota-img" alt="" hidden />
+        <div class="mascota-bubble" id="mascota-bubble">¡Hola!</div>
       </div>
-      <div class="stat">
-        <span class="stat-icon">😊</span>
-        <div class="stat-bar"><div class="stat-fill" id="stat-felicidad"></div></div>
-        <span class="stat-num" id="num-felicidad">100%</span>
-      </div>
-      <div class="stat">
-        <span class="stat-icon">⚡</span>
-        <div class="stat-bar"><div class="stat-fill" id="stat-energia"></div></div>
-        <span class="stat-num" id="num-energia">100%</span>
-      </div>
-      <div class="stat">
-        <span class="stat-icon">🧼</span>
-        <div class="stat-bar"><div class="stat-fill" id="stat-limpieza"></div></div>
-        <span class="stat-num" id="num-limpieza">100%</span>
+
+      <div class="info-mascota">
+        <div class="nombre-nivel">
+          <span class="nombre" id="mascota-nombre">—</span>
+          <span class="nivel-badge">Nv <b id="mascota-nivel">1</b></span>
+        </div>
+        <div class="mini-stats" id="mini-stats">
+          <span class="mini-stat" data-stat="hambre">🍖<b id="mini-hambre">100</b></span>
+          <span class="mini-stat" data-stat="felicidad">😊<b id="mini-felicidad">100</b></span>
+          <span class="mini-stat" data-stat="energia">⚡<b id="mini-energia">100</b></span>
+          <span class="mini-stat" data-stat="limpieza">🧼<b id="mini-limpieza">100</b></span>
+        </div>
+        <div class="monedero">
+          <span class="monedas-icono">🪙</span>
+          <span class="monedas-cantidad" id="monedas-cantidad">0</span>
+          <button class="btn-tienda" id="btn-tienda">Tienda</button>
+        </div>
       </div>
     </div>
 
-    <div class="acciones">
-      <button class="accion" data-accion="alimentar">🍖<span>Alimentar</span></button>
-      <button class="accion" data-accion="jugar">🎾<span>Jugar</span></button>
-      <button class="accion" data-accion="banar">🛁<span>Bañar</span></button>
-      <button class="accion" data-accion="dormir">💤<span>Dormir</span></button>
-      <button class="accion" data-accion="carino">❤️<span>Cariño</span></button>
-      <button class="accion" data-accion="curar">💊<span>Curar</span></button>
+    <div class="acciones-home">
+      <button class="accion-home" data-ir="alimentar"><span class="accion-icono">🍖</span><span class="accion-texto">Alimentar</span></button>
+      <button class="accion-home" data-ir="jugar"><span class="accion-icono">🎾</span><span class="accion-texto">Jugar</span></button>
+      <button class="accion-home" data-ir="banar"><span class="accion-icono">🛁</span><span class="accion-texto">Bañar</span></button>
+      <button class="accion-home" data-ir="dormir"><span class="accion-icono">💤</span><span class="accion-texto">Dormir</span></button>
+      <button class="accion-home" data-ir="carino"><span class="accion-icono">❤️</span><span class="accion-texto">Cariño</span></button>
+      <button class="accion-home" data-ir="curar"><span class="accion-icono">💊</span><span class="accion-texto">Curar</span></button>
+    </div>
+  </section>
+
+  <!-- ALIMENTAR -->
+  <section class="pantalla" data-pantalla="alimentar" id="pantalla-alimentar">
+    <div class="escena" id="escena-alimentar">
+      <div class="capa-fondo" id="fondo-alimentar"></div>
+      <div class="capa-objetos" id="objetos-alimentar"></div>
+
+      <div class="mascota-cocina" id="mascota-cocina">
+        <svg viewBox="0 0 220 200" class="mascota-svg-cocina">
+          <ellipse cx="110" cy="190" rx="60" ry="5" fill="rgba(0,0,0,.2)"/>
+          <g>
+            <ellipse cx="80" cy="60" rx="16" ry="50" fill="var(--color-principal)" transform="rotate(-20 80 60)"/>
+            <ellipse cx="80" cy="60" rx="8" ry="40" fill="var(--color-rosa)" transform="rotate(-20 80 60)"/>
+            <ellipse cx="140" cy="60" rx="16" ry="50" fill="var(--color-principal)" transform="rotate(20 140 60)"/>
+            <ellipse cx="140" cy="60" rx="8" ry="40" fill="var(--color-rosa)" transform="rotate(20 140 60)"/>
+          </g>
+          <ellipse cx="110" cy="155" rx="70" ry="45" fill="var(--color-principal)"/>
+          <ellipse cx="110" cy="120" rx="60" ry="52" fill="var(--color-principal)"/>
+          <circle cx="65" cy="138" r="11" fill="var(--color-rosa)" opacity=".5"/>
+          <circle cx="155" cy="138" r="11" fill="var(--color-rosa)" opacity=".5"/>
+          <ellipse cx="85" cy="115" rx="8" ry="10" fill="#2a1d12"/>
+          <ellipse cx="135" cy="115" rx="8" ry="10" fill="#2a1d12"/>
+          <circle cx="87" cy="112" r="3" fill="#fff"/>
+          <circle cx="137" cy="112" r="3" fill="#fff"/>
+          <path d="M110 133 Q105 128 102 133 Q102 138 110 142 Q118 138 118 133 Q115 128 110 133 Z" fill="#e88ea7"/>
+          <path d="M104 146 Q110 150 116 146" stroke="#2a1d12" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <line x1="110" y1="142" x2="110" y2="148" stroke="#2a1d12" stroke-width="1.5"/>
+        </svg>
+        <img class="mascota-img-cocina" id="mascota-img-cocina" alt="" hidden />
+        <div class="bubble-cocina" id="bubble-cocina">¡Tengo hambre!</div>
+      </div>
+
+      <div class="zona-drop" id="zona-drop"></div>
     </div>
 
-  </div>
-</section>
+    <div class="bandeja-comidas" id="bandeja-comidas"></div>
+  </section>
+
+  <!-- TIENDA -->
+  <section class="pantalla" data-pantalla="tienda" id="pantalla-tienda">
+    <div class="tienda-header">
+      <div class="monedero-grande">
+        <span>🪙</span>
+        <b id="tienda-monedas">0</b>
+        <small>monedas</small>
+      </div>
+    </div>
+
+    <div class="tienda-tabs">
+      <button class="tienda-tab active" data-cat="fondos">🏠 Fondos</button>
+      <button class="tienda-tab" data-cat="objetos">🪴 Objetos</button>
+      <button class="tienda-tab" data-cat="comidas">🍎 Comidas</button>
+      <button class="tienda-tab" data-cat="equipados">✨ Mi espacio</button>
+    </div>
+
+    <div class="tienda-contenido" id="tienda-contenido"></div>
+  </section>
+
+  <!-- Placeholders -->
+  <section class="pantalla" data-pantalla="jugar" id="pantalla-jugar">
+    <div class="placeholder-pantalla"><span>🎾</span><h3>Próximamente: Jugar</h3></div>
+  </section>
+  <section class="pantalla" data-pantalla="banar" id="pantalla-banar">
+    <div class="placeholder-pantalla"><span>🛁</span><h3>Próximamente: Bañar</h3></div>
+  </section>
+  <section class="pantalla" data-pantalla="dormir" id="pantalla-dormir">
+    <div class="placeholder-pantalla"><span>💤</span><h3>Próximamente: Dormir</h3></div>
+  </section>
+  <section class="pantalla" data-pantalla="carino" id="pantalla-carino">
+    <div class="placeholder-pantalla"><span>❤️</span><h3>Próximamente: Cariño</h3></div>
+  </section>
+  <section class="pantalla" data-pantalla="curar" id="pantalla-curar">
+    <div class="placeholder-pantalla"><span>💊</span><h3>Próximamente: Curar</h3></div>
+  </section>
+
+</main>
 
 <div class="toast" id="toast"></div>
 
