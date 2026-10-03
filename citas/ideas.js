@@ -120,7 +120,7 @@ const IDEAS = [
   { cat: "🎨 Arte y creatividad", txt: "Hacer un árbol genealógico de la pareja" },
   { cat: "🎨 Arte y creatividad", txt: "Diseñar juntos algo (una camiseta, un póster)" },
   { cat: "🎨 Arte y creatividad", txt: "Hacer una clase de repostería" },
-  { cat: "🎨 Arte y creatividad", txt: "Hacer una clase de coctelería" },
+  { cat: "🎨 Arte y creatividad", txt: "Hacer un cuadro juntos" },
   { cat: "🎨 Arte y creatividad", txt: "Hacer una clase de baile" },
 
   // ---- 🏃 DEPORTE Y AVENTURA ----
