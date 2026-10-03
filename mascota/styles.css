@@ -1,0 +1,220 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100dvh; overflow: hidden;
+  background: #241c17; color: #f0e2c8;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+}
+
+/* 👇 FIX CLAVE: Que el atributo [hidden] SIEMPRE gane */
+[hidden] { display: none !important; }
+
+/* ===== HEADER ===== */
+.app-header {
+  height: 56px; display: grid; grid-template-columns: 60px 1fr 60px;
+  align-items: center; padding: 0 6px;
+  background: linear-gradient(180deg, rgba(87,57,42,.9), rgba(46,28,19,.98));
+  border-bottom: 1px solid rgba(217,168,108,.25);
+}
+.icon-btn { width: 42px; height: 42px; border-radius: 50%; background: transparent; border: none; color: #d9a86c; cursor: pointer; display: grid; place-items: center; }
+.icon-btn svg { width: 22px; height: 22px; }
+.titulo { text-align: center; }
+.fecha-dia { display: block; font-family: "Caveat", cursive; font-size: 1.3rem; color: #d9a86c; }
+.fecha-anio { display: block; font-size: .6rem; letter-spacing: 2px; color: rgba(217,168,108,.5); text-transform: uppercase; margin-top: 2px; font-family: system-ui, sans-serif; }
+.status { display: grid; place-items: center; }
+.status .dot { width: 9px; height: 9px; border-radius: 50%; background: #666; }
+.status.conectado .dot { background: #6dc96d; animation: latir 2s ease-in-out infinite; }
+@keyframes latir { 50% { transform: scale(1.2); } }
+
+/* ===== PANTALLA CREAR MASCOTA ===== */
+.crear-mascota {
+  padding: 24px 20px; display: flex; flex-direction: column;
+  gap: 16px; align-items: center; text-align: center;
+  height: calc(100dvh - 56px); justify-content: center;
+}
+.crear-mascota h2 { font-family: "Caveat", cursive; font-size: 1.8rem; color: #d9a86c; }
+.tipos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 400px; }
+.tipo {
+  padding: 18px; background: rgba(87,57,42,.4); border: 1px solid rgba(217,168,108,.25);
+  border-radius: 14px; font-size: 2rem; color: #f0e2c8; cursor: pointer;
+  display: flex; flex-direction: column; gap: 6px; align-items: center; font-family: inherit;
+  transition: all .2s;
+}
+.tipo span { font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; color: #c9b48e; }
+.tipo.active { background: linear-gradient(135deg, #d9a86c, #b58a5a); color: #2a1d12; border-color: transparent; transform: scale(1.05); }
+.tipo.active span { color: #2a1d12; }
+
+#nombre-mascota {
+  width: 100%; max-width: 400px; padding: 14px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(217,168,108,.3);
+  border-radius: 12px; color: #f0e2c8; font-size: 1rem; font-family: inherit; text-align: center;
+}
+#nombre-mascota::placeholder { color: rgba(217,168,108,.4); }
+#nombre-mascota:focus { outline: none; border-color: #d9a86c; }
+
+.btn-crear {
+  padding: 14px 32px; background: linear-gradient(135deg, #d9a86c, #b58a5a);
+  color: #2a1d12; border: none; border-radius: 40px; font-family: inherit;
+  font-size: 1.1rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 8px 20px rgba(200,140,80,.4);
+  transition: transform .15s;
+}
+.btn-crear:disabled { opacity: .4; cursor: not-allowed; }
+.btn-crear:not(:disabled):active { transform: scale(.95); }
+
+/* ===== PANTALLA MASCOTA ===== */
+.mascota-area {
+  display: flex; flex-direction: column;
+  height: calc(100dvh - 56px);
+  padding: 12px 16px 16px;
+  gap: 12px;
+}
+
+/* Escenario de la mascota - OCUPA TODO EL ESPACIO LIBRE Y CENTRA */
+.mascota-stage {
+  flex: 1;
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 180px;
+  background: radial-gradient(circle at center, rgba(217,168,108,.10), transparent 65%);
+  border-radius: 20px;
+}
+
+.mascota-bubble {
+  position: absolute; top: 12px; right: 12px;
+  background: #fdfaf3; color: #3b322b;
+  padding: 6px 14px; border-radius: 14px;
+  font-family: "Caveat", cursive; font-size: 1rem;
+  opacity: 0; transition: opacity .3s; pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  z-index: 2;
+}
+.mascota-bubble.visible { opacity: 1; }
+
+.mascota-avatar {
+  font-size: 7rem;
+  line-height: 1;
+  filter: drop-shadow(0 12px 24px rgba(217,168,108,.35));
+  animation: flotar 3s ease-in-out infinite;
+  transition: transform .3s;
+}
+@keyframes flotar {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-10px) scale(1.04); }
+}
+.mascota-avatar.pop { animation: pop .5s; }
+@keyframes pop {
+  0%   { transform: scale(1) rotate(0deg); }
+  30%  { transform: scale(1.2) rotate(-8deg); }
+  60%  { transform: scale(1.1) rotate(6deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.mascota-nombre {
+  font-family: "Caveat", cursive; font-size: 1.9rem;
+  color: #d9a86c; margin-top: 14px;
+  text-shadow: 0 2px 8px rgba(217,168,108,.3);
+}
+.mascota-info {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; margin-top: 6px;
+}
+.nivel {
+  font-size: .75rem; text-transform: uppercase; letter-spacing: 2px;
+  color: rgba(217,168,108,.7); font-family: system-ui, sans-serif;
+}
+.nivel b { color: #d9a86c; font-size: .95rem; }
+.xp-bar {
+  width: 160px; height: 6px; background: rgba(217,168,108,.15);
+  border-radius: 6px; overflow: hidden;
+}
+.xp-fill {
+  height: 100%; background: linear-gradient(90deg, #d9a86c, #e0b87e);
+  border-radius: 6px; transition: width .4s;
+}
+
+/* ===== PANEL INFERIOR ===== */
+.panel-inferior {
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* ===== STATS CON PORCENTAJE ===== */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat {
+  display: grid;
+  grid-template-columns: 24px 1fr 42px;
+  align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: rgba(87,57,42,.4);
+  border: 1px solid rgba(217,168,108,.2);
+  border-radius: 12px;
+}
+.stat-icon { font-size: 1.15rem; text-align: center; }
+.stat-bar { height: 8px; background: rgba(0,0,0,.4); border-radius: 8px; overflow: hidden; }
+.stat-fill { height: 100%; border-radius: 8px; transition: width .5s, background .3s; width: 100%; }
+.stat-fill[data-level="alto"]  { background: linear-gradient(90deg, #6dc96d, #a8c66c); }
+.stat-fill[data-level="medio"] { background: linear-gradient(90deg, #e8b07a, #f4d03f); }
+.stat-fill[data-level="bajo"]  { background: linear-gradient(90deg, #e88a7a, #c9524a); }
+.stat-num {
+  font-size: .78rem; font-weight: 700;
+  color: #d9a86c; text-align: right;
+  font-family: system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== ACCIONES (más grandes y protagonistas) ===== */
+.acciones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: auto; /* Empuja las acciones al fondo del panel */
+}
+.accion {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 16px 8px;
+  background: linear-gradient(180deg, rgba(87,57,42,.5), rgba(87,57,42,.3));
+  border: 1px solid rgba(217,168,108,.3);
+  border-radius: 16px;
+  color: #f0e2c8;
+  font-size: 1.9rem;
+  cursor: pointer;
+  transition: transform .15s, background .15s, box-shadow .15s;
+  font-family: inherit;
+  box-shadow: 0 4px 10px rgba(0,0,0,.25);
+}
+.accion span {
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: system-ui, sans-serif;
+  color: #d9a86c;
+  font-weight: 600;
+}
+.accion:active {
+  transform: scale(.92);
+  background: linear-gradient(135deg, #d9a86c, #b58a5a);
+  box-shadow: 0 4px 16px rgba(217,168,108,.5);
+}
+.accion:active span { color: #2a1d12; }
+/* ===== TOAST ===== */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translate(-50%, 20px);
+  padding: 10px 22px; background: rgba(45,100,55,.95); color: #fff;
+  border-radius: 30px; font-family: system-ui, sans-serif; font-size: .85rem;
+  opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ===== MÓVIL ===== */
+@media (max-width: 500px) {
+  .mascota-avatar { font-size: 5.5rem; }
+  .mascota-nombre { font-size: 1.7rem; }
+  .stat { grid-template-columns: 20px 1fr 38px; padding: 7px 10px; }
+  .stat-icon { font-size: 1rem; }
+  .stat-num { font-size: .72rem; }
+  .accion { padding: 14px 6px; font-size: 1.7rem; }
+}
