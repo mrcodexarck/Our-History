@@ -488,6 +488,11 @@ function suscribirHoja(hoja) {
 
 async function initFirebase() {
   try {
+    // Intentamos inicializar Firebase
+    const app  = initializeApp(FIREBASE_CONFIG);
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
+    
     const cred = await signInAnonymously(auth);
     myUid = cred.user.uid;
     console.log("🔐 UID:", myUid);
@@ -497,10 +502,74 @@ async function initFirebase() {
     suscribirHoja(hojaActual);
     console.log("✅ Firebase listo");
   } catch (err) {
-    console.error("❌ Error Firebase:", err);
+    // Si falla, la app sigue funcionando en modo local
+    console.error("❌ Error Firebase (Modo local activado):", err);
     setStatus(null);
   }
 }
+
+// Iniciar Firebase sin bloquear el resto de la app
 initFirebase();
 
+// ¡IMPORTANTE! Asegurar que el fondo se pinte al cargar
 pintarFondo();
+/* ============================================================
+   ACTUALIZACIÓN AUTOMÁTICA DE LA PWA
+============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // Detectar si hay una nueva versión instalándose
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          // Si el nuevo Service Worker terminó de instalarse y hay uno activo antes
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Aquí puedes mostrar un toast en lugar de un confirm si prefieres
+            if (confirm("✨ ¡Nueva versión disponible! ¿Actualizar ahora?")) {
+              // Enviar mensaje al SW para que se active de inmediato
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+              // Recargar la página para ver los cambios
+              window.location.reload();
+            }
+          }
+        });
+      });
+    });
+  });
+}
+
+// Escuchar cuando el SW cambie para recargar la página automáticamente
+let refreshing;
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+  if (refreshing) return;
+  refreshing = true;
+  window.location.reload();
+});
+
+/* ============================================================
+   ACTUALIZACIÓN AUTOMÁTICA — SIN VERSIONES MANUALES
+============================================================ */
+/* ============================================================
+   ACTUALIZACIÓN AUTOMÁTICA DE LA PWA — SIN VERSIONES MANUALES
+============================================================ */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js", {
+      updateViaCache: "none" // Fuerza a revisar el sw.js siempre en la red
+    }).then(reg => {
+      reg.update(); // Busca actualizaciones cada vez que se abre la app
+
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            // Envía mensaje al SW para que se active de inmediato
+            newWorker.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      });
+    });
+  });
+}
+

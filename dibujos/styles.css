@@ -388,46 +388,29 @@ canvas {
 /* ============================================================
    RESPONSIVE — MÓVIL (Optimizado para Pintar)
 ============================================================ */
-@media (max-width: 768px) {
-  /* --- 1. ENCABEZADO Y PESTAÑAS MÁS COMPACTOS --- */
-  .app-header { 
-    height: 44px; /* Reducido de 56px a 44px */
-    padding: 0 4px;
-  }
-  .fecha-dia { font-size: 1rem; }
-  .fecha-anio { font-size: 0.55rem; margin-top: 1px; }
+/* ============================================================
+   RESPONSIVE — MÓVIL Y TABLETS (Optimizado para Pintar)
+============================================================ */
+/* Detecta tablets y celulares, sin importar el ancho exacto */
+@media (max-width: 1024px), (pointer: coarse) {
   
-  .tabs-hojas {
-    padding: 6px 8px 0;
-    gap: 6px;
-  }
-  .tabs-hojas .tab {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-  }
-  .tabs-hojas .tab .tab-num {
-    width: 18px; height: 18px;
-    font-size: 0.7rem;
-  }
+  .app-header { height: 48px; padding: 0 4px; }
+  .fecha-dia { font-size: 1.1rem; }
+  .fecha-anio { font-size: 0.55rem; }
+  
+  .tabs-hojas { padding: 6px 8px 0; gap: 6px; }
+  .tabs-hojas .tab { padding: 6px 12px; font-size: 0.85rem; }
 
-  /* --- 2. LIENZO (CANVAS) CON MÁS ESPACIO --- */
-  .canvas-area {
-    padding: 8px 8px 80px 8px; /* Dejamos espacio abajo para el botón flotante */
-  }
-  .canvas-wrapper {
-    border-radius: 8px; /* Un poco menos redondeado para aprovechar espacio */
-  }
+  /* Dejamos más espacio abajo para el botón flotante */
+  .canvas-area { padding: 8px 8px 100px 8px; }
 
-  /* --- 3. PANEL DE HERRAMIENTAS (BOTTOM SHEET NATIVO) --- */
+  /* PANEL DE HERRAMIENTAS (Bottom Sheet) */
   .panel-herramientas {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 70vh;
+    bottom: 0; left: 0; right: 0;
+    max-height: 75vh;
     overflow-y: auto;
-    /* Efecto cristal (Glassmorphism) más moderno */
-    background: rgba(30, 20, 14, 0.95);
+    background: rgba(30, 20, 14, 0.98);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top-left-radius: 24px;
@@ -435,104 +418,78 @@ canvas {
     box-shadow: 0 -10px 40px rgba(0,0,0,.8);
     transform: translateY(105%);
     transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
-    z-index: 150;
+    z-index: 999;
     padding: 6px 0 max(20px, env(safe-area-inset-bottom));
   }
-  .panel-herramientas.abierto {
-    transform: translateY(0);
-  }
+  .panel-herramientas.abierto { transform: translateY(0); }
 
-  /* Asa del panel (Handle) más visible */
   .drawer-handle {
-    display: block;
-    width: 48px;
-    height: 5px;
-    background: rgba(217,168,108,.5);
-    border-radius: 5px;
+    display: block; width: 48px; height: 5px;
+    background: rgba(217,168,108,.5); border-radius: 5px;
     margin: 10px auto 12px;
   }
+  .drawer-cerrar { display: grid; } /* Asegura que la X se vea */
 
-  /* --- 4. PALETA DE COLORES MÁS TÁCTIL --- */
-  .paleta { padding: 10px 14px 10px; }
-  .paleta-titulo { font-size: 0.9rem; margin-bottom: 8px; }
-  .lapices { 
-    gap: 10px; 
-    padding-bottom: 10px;
-    scroll-snap-type: x mandatory; /* Hace que el scroll sea suave */
-  }
-  .lapiz { 
-    flex: 0 0 40px; /* Más ancho para dedos */
-    height: 52px; /* Más alto */
-    scroll-snap-align: start;
-  }
-  .lapiz .cuerpo { width: 24px; height: 36px; }
+  /* PALETA DE COLORES TÁCTIL */
+  .paleta { padding: 10px 14px; }
+  .lapices { gap: 12px; padding-bottom: 10px; }
+  .lapiz { flex: 0 0 44px; height: 56px; }
+  .lapiz .cuerpo { width: 26px; height: 38px; }
 
-  /* --- 5. HERRAMIENTAS EN CUADRÍCULA (MÁS ORDENADO) --- */
+  /* HERRAMIENTAS EN CUADRÍCULA */
   .herramientas {
     padding: 10px 14px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 columnas exactas */
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
-    border-top: none;
   }
-  .tool {
-    flex: 1 1 auto;
-    min-width: unset;
-    padding: 10px 4px;
-    border-radius: 12px;
-  }
-  .tool svg { width: 26px; height: 26px; } /* Iconos más grandes */
+  .tool { padding: 12px 4px; border-radius: 12px; }
+  .tool svg { width: 28px; height: 28px; }
   .tool span { font-size: 0.65rem; }
 
-  /* --- 6. TAMAÑOS DE PINCEL MÁS GRANDES --- */
-  .tamanos {
-    padding: 10px 14px 20px;
-    gap: 12px;
-  }
-  .tamanos button {
-    width: 48px; /* Área táctil recomendada */
-    height: 48px;
-  }
+  /* TAMAÑOS DE PINCEL */
+  .tamanos { padding: 10px 14px 20px; gap: 14px; }
+  .tamanos button { width: 50px; height: 50px; }
 
-  /* --- 7. BOTÓN FLOTANTE (FAB) MINIMALISTA --- */
+  /* BOTÓN FLOTANTE (FAB) - ¡AQUÍ ESTÁ LA MAGIA! */
   .btn-tools-mobile {
-    display: grid; /* Centrado perfecto */
+    display: grid;
     place-items: center;
     position: fixed;
-    bottom: 24px;
+    bottom: calc(24px + env(safe-area-inset-bottom)); /* Evita la barra de inicio del iPhone */
     right: 24px;
-    width: 60px;  /* Botón circular */
-    height: 60px;
+    width: 64px;
+    height: 64px;
     padding: 0;
     background: linear-gradient(135deg, #e0b87e, #c9985a);
     color: #2a1d12;
     border: none;
-    border-radius: 50%; /* Totalmente redondo */
+    border-radius: 50%;
     box-shadow: 0 8px 24px rgba(200,140,80,.5), inset 0 1px 0 rgba(255,255,255,.4);
     cursor: pointer;
-    z-index: 100;
+    z-index: 1000; /* Siempre por encima de todo */
     transition: transform .2s, box-shadow .2s;
   }
-  /* Ocultamos el texto si hay, o lo hacemos más pequeño */
-  .btn-tools-mobile span { display: none; } 
-  .btn-tools-mobile svg { width: 28px; height: 28px; }
+  .btn-tools-mobile span { display: none; } /* Ocultamos el texto */
+  .btn-tools-mobile svg { width: 30px; height: 30px; }
   
   .btn-tools-mobile:active {
     transform: scale(.92);
     box-shadow: 0 4px 12px rgba(200,140,80,.6);
   }
 
-  /* --- 8. OVERLAY OSCURO --- */
   .drawer-overlay {
+    display: block;
+    position: fixed; inset: 0;
     background: rgba(0,0,0,.6);
     backdrop-filter: blur(4px);
+    z-index: 998;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
   }
+  .drawer-overlay.visible { opacity: 1; pointer-events: auto; }
 
-  /* --- 9. TOAST DE GUARDADO --- */
-  .save-indicator {
-    top: auto;
-    bottom: 100px;
-  }
+  .save-indicator { top: auto; bottom: 110px; }
 }
 
 /* Pantallas muy bajas */
