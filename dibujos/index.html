@@ -7,10 +7,33 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Nuestro Dibujo del Día</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<!-- ============================================================
+     OVERLAY DE SELECCIÓN DE PERFIL
+============================================================ -->
+<div class="perfil-overlay" id="perfil-overlay">
+  <div class="perfil-card">
+    <h1 class="perfil-titulo">¿Quién eres?</h1>
+    <p class="perfil-sub">Elige tu perfil para dibujar en tu hoja privada</p>
+
+    <div class="perfil-opciones">
+      <button type="button" class="perfil-opcion" data-perfil="joan">
+        <span class="perfil-op-emoji" data-emoji-de="joan">🤎</span>
+        <span class="perfil-op-nombre" data-nombre-de="joan">Joan</span>
+      </button>
+      <button type="button" class="perfil-opcion" data-perfil="emily">
+        <span class="perfil-op-emoji" data-emoji-de="emily">💛</span>
+        <span class="perfil-op-nombre" data-nombre-de="emily">Emily</span>
+      </button>
+    </div>
+
+    <p class="perfil-nota">Solo podrás dibujar en tu propia hoja 🤎</p>
+  </div>
+</div>
 
 <header class="app-header">
   <a href="../menu.html" class="icon-btn" aria-label="Volver">
@@ -20,49 +43,46 @@
     <span class="fecha-dia" id="fecha-dia">—</span>
     <span class="fecha-anio" id="fecha-anio">—</span>
   </div>
-  <div class="status" id="status" title="Estado de conexión">
-    <span class="dot"></span>
-  </div>
+  <button type="button" class="perfil-btn" id="perfil-btn" title="Mi perfil">
+    <span class="perfil-btn-emoji" id="perfil-btn-emoji">🤎</span>
+    <span class="perfil-btn-nombre" id="perfil-btn-nombre">Joan</span>
+    <span class="status-dot" id="status-dot"></span>
+  </button>
 </header>
 
-<!-- ============================================================
-     TABS DE HOJAS
-============================================================ -->
+<!-- Tabs de hojas -->
 <div class="tabs-hojas" id="tabs-hojas">
-  <button type="button" class="tab active" data-hoja="1">
+  <button type="button" class="tab" data-hoja="1">
     <span class="tab-num">1</span>
-    <span class="tab-label">Joan</span>
+    <span class="tab-label" id="tab-label-1">Joan</span>
   </button>
   <button type="button" class="tab" data-hoja="2">
     <span class="tab-num">2</span>
-    <span class="tab-label">Emily</span>
+    <span class="tab-label" id="tab-label-2">Emily</span>
   </button>
 </div>
 
 <div class="canvas-area">
-  <div class="canvas-wrapper">
+  <div class="canvas-wrapper" id="canvas-wrapper">
     <canvas id="canvas" width="900" height="900"></canvas>
+
+    <!-- Banana para mensajes -->
+    <button type="button" class="banana-btn" id="banana-btn" aria-label="Mensaje del día">
+      <span class="banana-emoji">🍌</span>
+      <span class="banana-badge" id="banana-badge" hidden></span>
+    </button>
   </div>
 </div>
 
-<!-- ============================================================
-     PANEL DE HERRAMIENTAS
-     En desktop se ve normal. En móvil es un drawer inferior.
-============================================================ -->
 <div class="panel-herramientas" id="panel-herramientas">
   <div class="drawer-handle"></div>
-
   <button type="button" class="drawer-cerrar" id="drawer-cerrar" aria-label="Cerrar">✕</button>
 
-  <!-- Colores -->
   <div class="paleta">
-    <div class="paleta-titulo">
-      <span>✏️ Colores</span>
-    </div>
+    <div class="paleta-titulo"><span>✏️ Colores</span></div>
     <div class="lapices" id="lapices"></div>
   </div>
 
-  <!-- Herramientas -->
   <div class="herramientas" id="herramientas">
     <button type="button" class="tool active" data-tool="lapiz" title="Lápiz">
       <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>
@@ -90,7 +110,6 @@
     </button>
   </div>
 
-  <!-- Tamaños -->
   <div class="tamanos" id="tamanos">
     <button type="button" data-size="3" title="Fino"><span style="width:4px;height:4px"></span></button>
     <button type="button" data-size="8" class="active" title="Normal"><span style="width:8px;height:8px"></span></button>
@@ -99,7 +118,6 @@
   </div>
 </div>
 
-<!-- Botón flotante para abrir panel en móvil -->
 <button type="button" class="btn-tools-mobile" id="btn-tools-mobile" aria-label="Herramientas">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="13.5" cy="6.5" r="2.5"/>
@@ -111,12 +129,83 @@
   <span>Herramientas</span>
 </button>
 
-<!-- Overlay oscuro detrás del drawer -->
 <div class="drawer-overlay" id="drawer-overlay"></div>
 
 <div class="save-indicator" id="save-indicator">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
   <span>Guardado</span>
+</div>
+
+<!-- ============================================================
+     MODAL — MENSAJE DEL DÍA (banana)
+============================================================ -->
+<div class="message-overlay" id="message-overlay" hidden>
+  <div class="message-card">
+    <button type="button" class="message-cerrar" id="message-cerrar">✕</button>
+
+    <div class="message-icono">🍌</div>
+    <h3 class="message-titulo" id="message-titulo">Mensaje del día</h3>
+    <p class="message-sub" id="message-sub">—</p>
+
+    <!-- Modo lectura -->
+    <div class="message-lectura" id="message-lectura" hidden>
+      <p class="message-texto" id="message-texto">—</p>
+    </div>
+
+    <!-- Modo edición -->
+    <div class="message-editor" id="message-editor" hidden>
+      <textarea id="message-input" maxlength="200" placeholder="Escribe algo lindo para el otro…" rows="4"></textarea>
+      <button type="button" class="message-guardar" id="message-guardar">Guardar mensaje</button>
+      <p class="message-nota">Se borra automáticamente mañana 🤎</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL — EDITAR PERFIL
+============================================================ -->
+<div class="perfil-editar-overlay" id="perfil-editar-overlay" hidden>
+  <div class="perfil-editar-card">
+    <button type="button" class="perfil-editar-cerrar" id="perfil-editar-cerrar">✕</button>
+
+    <h2 class="perfil-editar-titulo">Mi perfil</h2>
+    <p class="perfil-editar-sub">Personaliza cómo te ves en la app</p>
+
+    <label class="perfil-campo">
+      <span class="perfil-campo-label">Tu emoji</span>
+      <div class="perfil-emojis" id="perfil-emojis">
+        <button type="button" class="perfil-emoji-opcion" data-emoji="🤎">🤎</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="💛">💛</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="🦁">🦁</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="🐻">🐻</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="🐵">🐵</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="🌸">🌸</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="⭐">⭐</button>
+        <button type="button" class="perfil-emoji-opcion" data-emoji="🌙">🌙</button>
+      </div>
+    </label>
+
+    <label class="perfil-campo">
+      <span class="perfil-campo-label">Nombre</span>
+      <input type="text" id="perfil-input-nombre" maxlength="20" placeholder="Tu nombre" autocomplete="off">
+    </label>
+
+    <label class="perfil-campo">
+      <span class="perfil-campo-label">Cumpleaños <span class="perfil-campo-opcional">(opcional)</span></span>
+      <input type="text" id="perfil-input-cumple" maxlength="30" placeholder="Ej: 5 de marzo" autocomplete="off">
+    </label>
+
+    <label class="perfil-campo">
+      <span class="perfil-campo-label">Una frase <span class="perfil-campo-opcional">(opcional)</span></span>
+      <input type="text" id="perfil-input-bio" maxlength="60" placeholder="Ej: Dibujando cositas ✨" autocomplete="off">
+    </label>
+
+    <button type="button" class="perfil-guardar" id="perfil-guardar">Guardar</button>
+
+    <button type="button" class="perfil-cambiar-usuario" id="perfil-cambiar-usuario">
+      🔄 Cambiar de usuario
+    </button>
+  </div>
 </div>
 
 <script type="module" src="app.js"></script>
