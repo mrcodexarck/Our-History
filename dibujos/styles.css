@@ -290,7 +290,7 @@ canvas {
 .banana-badge[hidden] { display: none; }
 
 /* ============================================================
-   PANEL DE HERRAMIENTAS
+   PANEL DE HERRAMIENTAS (contenedor)
 ============================================================ */
 .panel-herramientas {
   flex-shrink: 0;
@@ -304,25 +304,33 @@ canvas {
   display: none;
 }
 
-/* ---- PALETA DE LÁPICES ---- */
+/* ============================================================
+   PALETA DE LÁPICES
+============================================================ */
 .paleta {
   flex-shrink: 0;
-  padding: 8px 12px 6px;
+  padding: 8px 0 6px;
   background: linear-gradient(0deg, rgba(46,28,19,.5), transparent);
+  overflow: hidden;
 }
 .paleta-titulo {
   font-family: "Caveat", cursive;
   font-size: .95rem;
   color: rgba(217,168,108,.75);
   margin-bottom: 6px;
-  padding-left: 4px;
+  padding: 0 14px;
 }
 .lapices {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  overflow-y: hidden;
+  padding: 0 14px 6px 14px;
+  scroll-padding-left: 14px;
+  scroll-padding-right: 14px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .lapices::-webkit-scrollbar { display: none; }
 
@@ -379,15 +387,16 @@ canvas {
 .lapiz.active { transform: translateY(-3px); }
 
 /* ============================================================
-   BARRA DE HERRAMIENTAS — 3 botones (Herramientas / Color / Acciones)
+   BARRA DE HERRAMIENTAS — 4 BOTONES
+   (Lápices con menú | Color | Deshacer | Limpiar)
 ============================================================ */
 .herramientas-wrap {
   flex-shrink: 0;
   display: flex;
   align-items: stretch;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 14px 8px;
+  gap: 6px;
+  padding: 10px 12px 8px;
   background: linear-gradient(0deg, rgba(15,10,8,.98), rgba(46,28,19,.7));
   border-top: 1px solid rgba(217,168,108,.2);
 }
@@ -398,13 +407,13 @@ canvas {
   flex-direction: column;
 }
 
-/* Botón genérico de la barra */
+/* Botón genérico */
 .btn-menu {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 11px 16px;
+  gap: 7px;
+  padding: 11px 14px;
   min-height: 46px;
   background: linear-gradient(135deg, rgba(87,57,42,.55), rgba(46,28,19,.85));
   border: 1px solid rgba(217,168,108,.35);
@@ -418,7 +427,7 @@ canvas {
   transition: all .2s;
   box-shadow: 0 4px 14px rgba(0,0,0,.3);
   white-space: nowrap;
-  flex: 1;
+  flex: 0 0 auto;
 }
 .btn-menu:hover {
   background: linear-gradient(135deg, rgba(87,57,42,.85), rgba(46,28,19,.98));
@@ -432,9 +441,26 @@ canvas {
   box-shadow: 0 6px 18px rgba(217,168,108,.4);
 }
 
-.btn-menu-color {
-  flex: 0 0 auto;
-  min-width: 92px;
+/* Botón Lápices (nombre variable) */
+.btn-menu-lapices {
+  min-width: 110px;
+  max-width: 150px;
+}
+
+/* Botones icon-only (Color, Deshacer, Limpiar) */
+.btn-menu-icon-only {
+  min-width: 0;
+}
+
+/* Botón peligroso (Limpiar) */
+.btn-menu-danger {
+  color: #e88a7a;
+  border-color: rgba(232,138,122,.3);
+}
+.btn-menu-danger:hover {
+  background: linear-gradient(135deg, rgba(120,50,45,.5), rgba(60,25,22,.7));
+  border-color: rgba(232,138,122,.7);
+  color: #ff9d8d;
 }
 
 .btn-menu-icono {
@@ -464,7 +490,7 @@ canvas {
 }
 
 /* ============================================================
-   MENÚS DESPLEGABLES
+   MENÚ DESPLEGABLE (Lápices)
 ============================================================ */
 .menu-lapices {
   position: absolute;
@@ -487,7 +513,6 @@ canvas {
   pointer-events: auto;
   transform: translateX(-50%) translateY(0) scale(1);
 }
-
 .menu-lapices::after {
   content: "";
   position: absolute;
@@ -501,11 +526,6 @@ canvas {
   filter: drop-shadow(0 2px 2px rgba(0,0,0,.3));
 }
 
-.menu-acciones {
-  min-width: 200px;
-}
-
-/* Items del menú */
 .menu-item {
   display: flex;
   align-items: center;
@@ -535,14 +555,10 @@ canvas {
   height: 22px;
   flex-shrink: 0;
 }
-.menu-item-icono svg {
-  width: 20px;
-  height: 20px;
-}
-.menu-item-texto {
-  flex: 1;
-  font-weight: 500;
-}
+.menu-item-icono svg { width: 20px; height: 20px; }
+
+.menu-item-texto { flex: 1; font-weight: 500; }
+
 .menu-item-check {
   opacity: 0;
   color: #d9a86c;
@@ -557,19 +573,9 @@ canvas {
 }
 .menu-item.active .menu-item-check { opacity: 1; }
 
-.menu-item.danger { color: #e88a7a; }
-.menu-item.danger:hover {
-  background: rgba(232,138,122,.15);
-  color: #ff9d8d;
-}
-
-.menu-divisor {
-  height: 1px;
-  background: rgba(217,168,108,.15);
-  margin: 6px 12px;
-}
-
-/* ---- TAMAÑOS ---- */
+/* ============================================================
+   TAMAÑOS
+============================================================ */
 .tamanos {
   flex-shrink: 0;
   display: flex;
@@ -1101,21 +1107,51 @@ canvas {
     cursor: pointer;
   }
 
-  .paleta { padding: 10px 14px; }
-  .lapices { gap: 12px; padding-bottom: 10px; }
+  /* ---- PALETA EN MÓVIL (FIX) ---- */
+  .paleta { padding: 10px 0; }
+  .paleta-titulo { padding: 0 16px; }
+  .lapices {
+    gap: 12px;
+    padding: 0 16px 10px 16px;
+    scroll-padding-left: 16px;
+    scroll-padding-right: 16px;
+  }
   .lapiz { flex: 0 0 44px; height: 56px; }
   .lapiz .cuerpo { width: 26px; height: 38px; }
 
-  .herramientas-wrap { padding: 12px 14px 10px; gap: 8px; }
+  /* ---- BARRA DE HERRAMIENTAS EN MÓVIL (4 botones) ---- */
+  .herramientas-wrap {
+    padding: 12px 10px 10px;
+    gap: 6px;
+    justify-content: space-between;
+  }
   .btn-menu {
-    padding: 13px 14px;
-    font-size: 1rem;
+    padding: 12px 12px;
     min-height: 52px;
+    font-size: .95rem;
+    gap: 6px;
   }
   .btn-menu-icono { width: 22px; height: 22px; }
   .btn-menu-icono svg { width: 22px; height: 22px; }
-  .btn-menu-texto { max-width: 80px; }
-  .btn-menu-color { min-width: 100px; }
+
+  .btn-menu-lapices {
+    min-width: 100px;
+    max-width: 130px;
+    flex: 1 1 auto;
+  }
+  .btn-menu-lapices .btn-menu-texto {
+    max-width: 70px;
+  }
+
+  /* En móvil: Color, Deshacer y Limpiar son solo icono */
+  .btn-menu-icon-only {
+    padding: 12px 14px;
+    min-width: 48px;
+    flex: 0 0 auto;
+  }
+  .btn-menu-icon-only .btn-menu-texto {
+    display: none;
+  }
 
   .menu-lapices {
     min-width: 240px;
