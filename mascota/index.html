@@ -112,6 +112,9 @@
           <span class="monedas-cantidad" id="monedas-cantidad">0</span>
           <button class="btn-tienda" id="btn-tienda">Tienda</button>
         </div>
+        <button class="btn-personalizar" id="btn-personalizar">
+          🎨 Personalizar colores
+        </button>
       </div>
     </div>
 
@@ -200,6 +203,68 @@
   </section>
 
 </main>
+
+<!-- ============================================================
+     MODAL PERSONALIZAR COLORES (estilo Paint)
+============================================================ -->
+<div class="modal-color" id="modal-color" hidden>
+  <div class="modal-color-caja">
+
+    <header class="modal-color-header">
+      <h3>🎨 Personalizar mascota</h3>
+      <button class="modal-color-cerrar" id="modal-color-cerrar" aria-label="Cerrar">✕</button>
+    </header>
+
+    <div class="modal-color-preview">
+      <div class="preview-circulo" id="preview-circulo-principal" title="Principal"></div>
+      <div class="preview-circulo" id="preview-circulo-claro" title="Claro"></div>
+      <div class="preview-circulo" id="preview-circulo-rosa" title="Rosa"></div>
+    </div>
+
+    <div class="modal-color-slots">
+      <button class="slot-color active" data-slot="principal">
+        <span class="slot-nombre">Principal</span>
+        <span class="slot-valor" id="slot-valor-principal">#e8d5b8</span>
+      </button>
+      <button class="slot-color" data-slot="claro">
+        <span class="slot-nombre">Claro</span>
+        <span class="slot-valor" id="slot-valor-claro">#f5ebe0</span>
+      </button>
+      <button class="slot-color" data-slot="rosa">
+        <span class="slot-nombre">Rosa</span>
+        <span class="slot-valor" id="slot-valor-rosa">#f5a8b8</span>
+      </button>
+    </div>
+
+    <div class="modal-color-seccion">
+      <div class="seccion-titulo">Colores básicos</div>
+      <div class="paleta-grid" id="paleta-basicos"></div>
+    </div>
+
+    <div class="modal-color-seccion">
+      <div class="seccion-titulo">
+        Color personalizado
+        <span class="seccion-hint">(toca para abrir el selector)</span>
+      </div>
+      <label class="color-custom-row">
+        <input type="color" id="color-custom" value="#e8d5b8" />
+        <span class="color-custom-hex" id="color-custom-hex">#E8D5B8</span>
+        <span class="color-custom-icono">🎨</span>
+      </label>
+    </div>
+
+    <div class="modal-color-seccion" id="seccion-recientes" hidden>
+      <div class="seccion-titulo">Recientes</div>
+      <div class="paleta-grid" id="paleta-recientes"></div>
+    </div>
+
+    <div class="modal-color-botones">
+      <button class="btn-modal reset" id="btn-color-reset">🔄 Resetear</button>
+      <button class="btn-modal guardar" id="btn-color-guardar">💾 Guardar</button>
+    </div>
+
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 

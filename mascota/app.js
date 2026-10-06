@@ -17,6 +17,29 @@ let mascotaRef = null;
 let mascotaActual = null;
 let tipoSeleccionado = null;
 
+/* Estado del color picker */
+let slotActivo = "principal";
+let coloresTemp = { principal: "#e8d5b8", claro: "#f5ebe0", rosa: "#f5a8b8" };
+let recientes = [];
+
+/* ============================================================
+   PALETA DE COLORES (estilo Paint)
+============================================================ */
+const PALETA_PRESETS = [
+  // Neutros
+  "#000000", "#3b322b", "#6b5b4a", "#a89a86", "#d9cfbf", "#ffffff", "#f5f0e6", "#e8e0d0",
+  // Básicos
+  "#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#ec407a", "#00acc1",
+  // Pastel
+  "#ffcdd2", "#ffe0b2", "#fff9c4", "#c8e6c9", "#bbdefb", "#e1bee7", "#f8bbd0", "#b2ebf2",
+  // Oscuros
+  "#b71c1c", "#e65100", "#f57f17", "#1b5e20", "#0d47a1", "#4a148c", "#880e4f", "#004d40",
+  // Tierra
+  "#8d6e63", "#a1887f", "#bcaaa4", "#d7ccc8", "#795548", "#5d4037", "#a0703c", "#c9a37a",
+  // Neón
+  "#ff1744", "#ff9100", "#ffea00", "#00e676", "#00b0ff", "#d500f9", "#ff4081", "#18ffff",
+];
+
 /* ============================================================
    CONFIG
 ============================================================ */
@@ -329,6 +352,8 @@ function renderMascota(m) {
   const mc = el("monedas-cantidad");
   if (mc) mc.textContent = m.monedas || 0;
 
+  aplicarColoresPersonalizados();
+
   const activa = document.querySelector(".pantalla.activa");
   if (activa && ESCENAS[activa.dataset.pantalla]) {
     cargarEscena(activa.dataset.pantalla);
@@ -411,6 +436,191 @@ function fondoGradiente(nombre) {
   };
   return map[nombre] || "linear-gradient(180deg, #5a4232, #8b6a4a)";
 }
+
+/* ============================================================
+   COLOR PICKER
+============================================================ */
+function inicializarPaleta() {
+  const grid = el("paleta-basicos");
+  if (!grid) return;
+  grid.innerHTML = "";
+  PALETA_PRESETS.forEach(color => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "paleta-swatch";
+    btn.style.background = color;
+    btn.dataset.color = color;
+    btn.addEventListener("click", () => aplicarColorSlot(color));
+    grid.appendChild(btn);
+  });
+}
+
+function renderRecientes() {
+  const sec = el("seccion-recientes");
+  const grid = el("paleta-recientes");
+  if (!grid || !sec) return;
+  if (recientes.length === 0) {
+    sec.hidden = true;
+    return;
+  }
+  sec.hidden = false;
+  grid.innerHTML = "";
+  recientes.forEach(color => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "paleta-swatch";
+    btn.style.background = color;
+    btn.dataset.color = color;
+    btn.addEventListener("click", () => aplicarColorSlot(color));
+    grid.appendChild(btn);
+  });
+}
+
+function cargarColoresDeMascota() {
+  if (mascotaActual?.coloresPersonalizados) {
+    coloresTemp = { ...mascotaActual.coloresPersonalizados };
+  } else {
+    coloresTemp = { principal: "#e8d5b8", claro: "#f5ebe0", rosa: "#f5a8b8" };
+  }
+}
+
+function actualizarPreviewModal() {
+  el("preview-circulo-principal").style.background = coloresTemp.principal;
+  el("preview-circulo-claro").style.background = coloresTemp.claro;
+  el("preview-circulo-rosa").style.background = coloresTemp.rosa;
+
+  el("slot-valor-principal").textContent = coloresTemp.principal.toUpperCase();
+  el("slot-valor-claro").textContent = coloresTemp.claro.toUpperCase();
+  el("slot-valor-rosa").textContent = coloresTemp.rosa.toUpperCase();
+
+  el("color-custom").value = coloresTemp[slotActivo];
+  el("color-custom-hex").textContent = coloresTemp[slotActivo].toUpperCase();
+}
+
+function aplicarColorSlot(color) {
+  coloresTemp[slotActivo] = color;
+  actualizarPreviewModal();
+
+  const circulo = el(`preview-circulo-${slotActivo}`);
+  if (circulo) {
+    circulo.classList.remove("pulso");
+    void circulo.offsetWidth;
+    circulo.classList.add("pulso");
+  }
+
+  aplicarColoresPersonalizadosTemp();
+  sonido("pop");
+}
+
+function aplicarColoresPersonalizadosTemp() {
+  const svg = el("mascota-svg");
+  const svgCocina = document.querySelector(".mascota-svg-cocina");
+  [svg, svgCocina].forEach(s => {
+    if (!s) return;
+    s.style.setProperty("--color-principal", coloresTemp.principal);
+    s.style.setProperty("--color-claro", coloresTemp.claro);
+    s.style.setProperty("--color-rosa", coloresTemp.rosa);
+  });
+}
+
+function aplicarColoresPersonalizados() {
+  const svg = el("mascota-svg");
+  const svgCocina = document.querySelector(".mascota-svg-cocina");
+  const colores = mascotaActual?.coloresPersonalizados;
+
+  [svg, svgCocina].forEach(s => {
+    if (!s) return;
+    if (colores) {
+      s.style.setProperty("--color-principal", colores.principal);
+      s.style.setProperty("--color-claro", colores.claro);
+      s.style.setProperty("--color-rosa", colores.rosa);
+    } else {
+      s.style.removeProperty("--color-principal");
+      s.style.removeProperty("--color-claro");
+      s.style.removeProperty("--color-rosa");
+    }
+  });
+}
+
+function abrirModalColor() {
+  const modal = el("modal-color");
+  if (!modal) return;
+  cargarColoresDeMascota();
+  slotActivo = "principal";
+  document.querySelectorAll(".slot-color").forEach(s => {
+    s.classList.toggle("active", s.dataset.slot === "principal");
+  });
+  actualizarPreviewModal();
+  aplicarColoresPersonalizadosTemp();
+  renderRecientes();
+  modal.hidden = false;
+}
+
+function cerrarModalColor() {
+  const modal = el("modal-color");
+  if (!modal) return;
+  modal.hidden = true;
+  aplicarColoresPersonalizados();
+}
+
+async function guardarColores() {
+  if (!mascotaRef) return;
+  try {
+    await setDoc(mascotaRef, {
+      coloresPersonalizados: { ...coloresTemp }
+    }, { merge: true });
+
+    const todos = [coloresTemp.principal, coloresTemp.claro, coloresTemp.rosa];
+    todos.forEach(c => {
+      recientes = [c, ...recientes.filter(x => x !== c)].slice(0, 16);
+    });
+    localStorage.setItem("mascota-colores-recientes", JSON.stringify(recientes));
+
+    mostrarToast("🎨 ¡Colores guardados!");
+    sonido("moneda");
+    cerrarModalColor();
+  } catch (err) {
+    console.error(err);
+    mostrarToast("❌ Error guardando");
+  }
+}
+
+// Cargar recientes al inicio
+try {
+  recientes = JSON.parse(localStorage.getItem("mascota-colores-recientes") || "[]");
+} catch(e) { recientes = []; }
+
+// Listeners del modal
+el("btn-personalizar")?.addEventListener("click", abrirModalColor);
+el("modal-color-cerrar")?.addEventListener("click", cerrarModalColor);
+el("modal-color")?.addEventListener("click", e => {
+  if (e.target.id === "modal-color") cerrarModalColor();
+});
+
+document.querySelectorAll(".slot-color").forEach(slot => {
+  slot.addEventListener("click", () => {
+    document.querySelectorAll(".slot-color").forEach(s => s.classList.remove("active"));
+    slot.classList.add("active");
+    slotActivo = slot.dataset.slot;
+    el("color-custom").value = coloresTemp[slotActivo];
+    el("color-custom-hex").textContent = coloresTemp[slotActivo].toUpperCase();
+  });
+});
+
+el("color-custom")?.addEventListener("input", e => {
+  aplicarColorSlot(e.target.value);
+});
+
+el("btn-color-reset")?.addEventListener("click", () => {
+  coloresTemp = { principal: "#e8d5b8", claro: "#f5ebe0", rosa: "#f5a8b8" };
+  actualizarPreviewModal();
+  aplicarColoresPersonalizadosTemp();
+  mostrarToast("🔄 Colores reseteados");
+});
+
+el("btn-color-guardar")?.addEventListener("click", guardarColores);
+
+inicializarPaleta();
 
 /* ============================================================
    MONEDAS
@@ -536,7 +746,6 @@ function renderizarTienda() {
     return;
   }
 
-  // 👇 FILTROS por subcategoría
   const subs = SUBCATEGORIAS[categoriaActual] || [];
   if (subs.length > 1) {
     const filtros = document.createElement("div");
@@ -554,13 +763,11 @@ function renderizarTienda() {
     cont.appendChild(filtros);
   }
 
-  // Filtrar items
   let items = CATALOGO[categoriaActual] || [];
   if (subcategoriaActual !== "todas") {
     items = items.filter(i => i.categoria === subcategoriaActual);
   }
 
-  // Ordenar: desbloqueados primero, luego por precio
   items = [...items].sort((a, b) => {
     const da = estaDesbloqueado(a.id) ? 0 : 1;
     const db = estaDesbloqueado(b.id) ? 0 : 1;
@@ -577,7 +784,6 @@ function renderizarTienda() {
     if (!desbloqueado) div.classList.add("bloqueado");
     if (equipado) div.classList.add("equipado");
 
-    // Estado
     if (equipado) {
       const s = document.createElement("span");
       s.className = "item-estado equipado";
@@ -595,7 +801,6 @@ function renderizarTienda() {
       div.appendChild(s);
     }
 
-    // Icono
     const iconoDiv = document.createElement("div");
     iconoDiv.className = "item-icono";
     const img = document.createElement("img");
@@ -607,12 +812,10 @@ function renderizarTienda() {
     };
     iconoDiv.appendChild(img);
 
-    // Nombre
     const nombre = document.createElement("div");
     nombre.className = "item-nombre";
     nombre.textContent = item.nombre;
 
-    // Precio
     if (!desbloqueado) {
       const precio = document.createElement("div");
       precio.className = "item-precio";
@@ -620,7 +823,6 @@ function renderizarTienda() {
       div.appendChild(precio);
     }
 
-    // Botones
     const botones = document.createElement("div");
     botones.className = "item-botones";
 
@@ -707,7 +909,7 @@ document.querySelectorAll(".tienda-tab").forEach(tab => {
     document.querySelectorAll(".tienda-tab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
     categoriaActual = tab.dataset.cat;
-    subcategoriaActual = "todas"; // 👈 Resetear filtro
+    subcategoriaActual = "todas";
     renderizarTienda();
   });
 });
@@ -715,7 +917,7 @@ document.querySelectorAll(".tienda-tab").forEach(tab => {
 el("btn-tienda")?.addEventListener("click", () => irA("tienda"));
 
 /* ============================================================
-   INTERACCIONES HOME — TAP / ACARICIAR / PEGAR
+   INTERACCIONES HOME
 ============================================================ */
 const svg = el("mascota-svg");
 let interaccion = { activa: false, inicio: null, inicioTiempo: 0, acariciando: false, ultimaParticula: 0 };
@@ -1060,7 +1262,8 @@ el("btn-crear")?.addEventListener("click", async () => {
       ultimasAcciones: [],
       monedas: MONEDAS_INICIALES,
       desbloqueados: [...DESBLOQUEADOS_INICIALES],
-      equipamiento: { fondo: "fondo-sala", objetos: [] }
+      equipamiento: { fondo: "fondo-sala", objetos: [] },
+      coloresPersonalizados: { principal: "#e8d5b8", claro: "#f5ebe0", rosa: "#f5a8b8" }
     });
     sonido("miau");
     mostrarToast("✨ ¡Mascota creada!");
@@ -1083,7 +1286,6 @@ async function init() {
     onSnapshot(mascotaRef, snap => {
       if (snap.exists()) {
         const data = snap.data();
-        // Migrar si hace falta
         migrarMascota(data);
 
         renderMascota(data);
