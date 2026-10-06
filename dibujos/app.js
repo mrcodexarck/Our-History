@@ -93,16 +93,13 @@ let currentStroke = null;
 const strokesRefs = { 1: null, 2: null };
 const unsubscribers = { 1: null, 2: null };
 
-/* Presencia */
 let presenciaInterval = null;
 let presenciaUnsub = null;
 
-/* Mensajes */
 let mensajeUnsub = null;
 let mensajeJoan  = "";
 let mensajeEmily = "";
 
-/* Perfiles */
 let perfilUnsubs = { joan: null, emily: null };
 
 /* ============================================================
@@ -289,7 +286,7 @@ function cambiarHoja(nuevaHoja) {
 }
 
 /* ============================================================
-   PALETA
+   PALETA RÁPIDA (lápices)
 ============================================================ */
 const COLORES = [
   "#3b322b", "#7d6c5c", "#b58a5a", "#d9a86c",
@@ -495,7 +492,6 @@ function escucharPerfiles() {
 }
 
 function actualizarUIconPerfiles() {
-  // Header
   if (perfilActual) {
     const p = PERFILES[perfilActual];
     const elEmoji  = document.getElementById("perfil-btn-emoji");
@@ -504,13 +500,11 @@ function actualizarUIconPerfiles() {
     if (elNombre) elNombre.textContent = p.nombre;
   }
 
-  // Tabs labels
   const label1 = document.getElementById("tab-label-1");
   const label2 = document.getElementById("tab-label-2");
   if (label1) label1.textContent = PERFILES.joan.nombre;
   if (label2) label2.textContent = PERFILES.emily.nombre;
 
-  // Selector de perfil
   document.querySelectorAll("[data-emoji-de]").forEach(el => {
     const id = el.dataset.emojiDe;
     el.textContent = PERFILES[id].emoji;
@@ -593,16 +587,12 @@ function actualizarBanana() {
   const badge = document.getElementById("banana-badge");
   if (!badge) return;
 
-  // Si estoy viendo MI hoja y el otro me escribió → mostrar badge
-  // Si estoy viendo SU hoja y él escribió → mostrar badge
   const esMia = esMiHoja(hojaActual);
   let mostrarBadge = false;
 
   if (esMia) {
-    // En mi hoja: badge si el otro escribió (para que sepa que hay mensaje)
     mostrarBadge = !!mensajeDelOtro();
   } else {
-    // En su hoja: badge si escribió algo
     mostrarBadge = !!mensajeDelOtro();
   }
 
@@ -619,14 +609,12 @@ function abrirMensaje() {
   const esMia = esMiHoja(hojaActual);
 
   if (esMia) {
-    // Escribir mi mensaje
     titulo.textContent = "Escribe un mensaje";
     sub.textContent = `Para ${PERFILES[otroPerfil].nombre}`;
     lectura.hidden = true;
     editor.hidden = false;
     document.getElementById("message-input").value = miMensaje();
   } else {
-    // Leer el mensaje del otro
     const quienId = hojaActual === 1 ? "joan" : "emily";
     titulo.textContent = `Mensaje de ${PERFILES[quienId].nombre}`;
     sub.textContent = "Solo tú puedes leerlo 🤎";
@@ -653,7 +641,6 @@ async function guardarMensaje() {
 
   try {
     if (!texto) {
-      // Borrar mi mensaje
       await setDoc(mensajeDoc(), {
         [perfilActual]: "",
         actualizadoEn: Date.now()
@@ -665,7 +652,6 @@ async function guardarMensaje() {
       }, { merge: true });
     }
 
-    // Actualizar local
     if (perfilActual === "joan") mensajeJoan = texto;
     else mensajeEmily = texto;
 
@@ -767,7 +753,6 @@ document.querySelectorAll(".perfil-opcion").forEach(btn => {
     actualizarUIconPerfiles();
     ocultarSelectorPerfil();
 
-    // Forzar cambio de hoja
     hojaActual = 0;
     cambiarHoja(miTab);
 
@@ -805,13 +790,156 @@ document.getElementById("perfil-cambiar-usuario").addEventListener("click", () =
   mostrarSelectorPerfil();
 });
 
-// Banana — mensajes
 document.getElementById("banana-btn").addEventListener("click", abrirMensaje);
 document.getElementById("message-cerrar").addEventListener("click", cerrarMensaje);
 document.getElementById("message-overlay").addEventListener("click", e => {
   if (e.target === document.getElementById("message-overlay")) cerrarMensaje();
 });
 document.getElementById("message-guardar").addEventListener("click", guardarMensaje);
+
+/* ============================================================
+   COLOR PICKER (estilo Paint)
+============================================================ */
+const PALETA_PRESETS = [
+  // Neutros
+  "#000000", "#3b322b", "#6b5b4a", "#a89a86", "#d9cfbf", "#ffffff", "#f5f0e6", "#e8e0d0",
+  // Básicos
+  "#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#ec407a", "#00acc1",
+  // Pastel
+  "#ffcdd2", "#ffe0b2", "#fff9c4", "#c8e6c9", "#bbdefb", "#e1bee7", "#f8bbd0", "#b2ebf2",
+  // Oscuros
+  "#b71c1c", "#e65100", "#f57f17", "#1b5e20", "#0d47a1", "#4a148c", "#880e4f", "#004d40",
+  // Tierra
+  "#8d6e63", "#a1887f", "#bcaaa4", "#d7ccc8", "#795548", "#5d4037", "#a0703c", "#c9a37a",
+  // Neón
+  "#ff1744", "#ff9100", "#ffea00", "#00e676", "#00b0ff", "#d500f9", "#ff4081", "#18ffff",
+];
+
+let recientesColores = [];
+let colorTemp = "#3b322b";
+
+try {
+  recientesColores = JSON.parse(localStorage.getItem("dibujos-colores-recientes") || "[]");
+} catch(e) { recientesColores = []; }
+
+const modalColor       = document.getElementById("modal-color");
+const modalColorCerrar = document.getElementById("modal-color-cerrar");
+const paletaBasic      = document.getElementById("paleta-basicos");
+const paletaRecient    = document.getElementById("paleta-recientes");
+const seccionRecient   = document.getElementById("seccion-recientes");
+const colorCustomInput = document.getElementById("color-custom");
+const colorCustomHexEl = document.getElementById("color-custom-hex");
+const previewCirculo   = document.getElementById("preview-circulo");
+const previewHexEl     = document.getElementById("preview-hex");
+const btnColorPicker   = document.getElementById("btn-color-picker");
+const btnColorCancelar = document.getElementById("btn-color-cancelar");
+const btnColorAplicar  = document.getElementById("btn-color-aplicar");
+
+function inicializarPaletaColorPicker() {
+  if (!paletaBasic) return;
+  paletaBasic.innerHTML = "";
+  PALETA_PRESETS.forEach(color => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "paleta-swatch";
+    btn.style.background = color;
+    btn.dataset.color = color;
+    btn.addEventListener("click", () => seleccionarColorTemp(color));
+    paletaBasic.appendChild(btn);
+  });
+}
+
+function renderizarRecientes() {
+  if (!paletaRecient || !seccionRecient) return;
+  if (recientesColores.length === 0) {
+    seccionRecient.hidden = true;
+    return;
+  }
+  seccionRecient.hidden = false;
+  paletaRecient.innerHTML = "";
+  recientesColores.slice(0, 16).forEach(color => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "paleta-swatch";
+    btn.style.background = color;
+    btn.dataset.color = color;
+    btn.addEventListener("click", () => seleccionarColorTemp(color));
+    paletaRecient.appendChild(btn);
+  });
+}
+
+function actualizarPreviewColor() {
+  if (previewCirculo) previewCirculo.style.background = colorTemp;
+  if (previewHexEl) previewHexEl.textContent = colorTemp.toUpperCase();
+  if (colorCustomInput) colorCustomInput.value = colorTemp;
+  if (colorCustomHexEl) colorCustomHexEl.textContent = colorTemp.toUpperCase();
+
+  document.querySelectorAll(".paleta-swatch").forEach(sw => {
+    sw.classList.toggle("seleccionado", sw.dataset.color === colorTemp);
+  });
+}
+
+function seleccionarColorTemp(color) {
+  colorTemp = color;
+  actualizarPreviewColor();
+}
+
+function abrirModalColor() {
+  if (!modalColor) return;
+  colorTemp = colorActual;
+  actualizarPreviewColor();
+  renderizarRecientes();
+  modalColor.hidden = false;
+}
+
+function cerrarModalColor() {
+  if (!modalColor) return;
+  modalColor.hidden = true;
+}
+
+function aplicarColorElegido() {
+  const hex = colorTemp;
+  const lapizExistente = [...document.querySelectorAll(".lapiz")]
+    .find(l => l.dataset.color === hex);
+
+  if (lapizExistente) {
+    seleccionarColor(hex, lapizExistente);
+  } else {
+    colorActual = hex;
+    herramienta = "lapiz";
+    document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
+    document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
+    document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+  }
+
+  recientesColores = [hex, ...recientesColores.filter(c => c !== hex)].slice(0, 16);
+  try {
+    localStorage.setItem("dibujos-colores-recientes", JSON.stringify(recientesColores));
+  } catch(e) {}
+
+  if (typeof mostrarGuardado === "function") mostrarGuardado();
+  cerrarModalColor();
+}
+
+btnColorPicker?.addEventListener("click", abrirModalColor);
+modalColorCerrar?.addEventListener("click", cerrarModalColor);
+btnColorCancelar?.addEventListener("click", cerrarModalColor);
+btnColorAplicar?.addEventListener("click", aplicarColorElegido);
+modalColor?.addEventListener("click", e => {
+  if (e.target === modalColor) cerrarModalColor();
+});
+
+colorCustomInput?.addEventListener("input", e => {
+  seleccionarColorTemp(e.target.value);
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !modalColor?.hidden) {
+    cerrarModalColor();
+  }
+});
+
+inicializarPaletaColorPicker();
 
 /* ============================================================
    INICIAR FIREBASE

@@ -78,11 +78,18 @@
   <div class="drawer-handle"></div>
   <button type="button" class="drawer-cerrar" id="drawer-cerrar" aria-label="Cerrar">✕</button>
 
+  <!-- PALETA DE COLORES -->
   <div class="paleta">
-    <div class="paleta-titulo"><span>✏️ Colores</span></div>
+    <div class="paleta-titulo">
+      <span>✏️ Colores</span>
+      <button type="button" class="btn-color-picker" id="btn-color-picker" title="Más colores">
+        🎨 Más colores
+      </button>
+    </div>
     <div class="lapices" id="lapices"></div>
   </div>
 
+  <!-- HERRAMIENTAS -->
   <div class="herramientas" id="herramientas">
     <button type="button" class="tool active" data-tool="lapiz" title="Lápiz">
       <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>
@@ -147,12 +154,10 @@
     <h3 class="message-titulo" id="message-titulo">Mensaje del día</h3>
     <p class="message-sub" id="message-sub">—</p>
 
-    <!-- Modo lectura -->
     <div class="message-lectura" id="message-lectura" hidden>
       <p class="message-texto" id="message-texto">—</p>
     </div>
 
-    <!-- Modo edición -->
     <div class="message-editor" id="message-editor" hidden>
       <textarea id="message-input" maxlength="200" placeholder="Escribe algo lindo para el otro…" rows="4"></textarea>
       <button type="button" class="message-guardar" id="message-guardar">Guardar mensaje</button>
@@ -205,6 +210,60 @@
     <button type="button" class="perfil-cambiar-usuario" id="perfil-cambiar-usuario">
       🔄 Cambiar de usuario
     </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL — COLOR PICKER (estilo Paint)
+============================================================ -->
+<div class="modal-color" id="modal-color" hidden>
+  <div class="modal-color-caja">
+
+    <header class="modal-color-header">
+      <h3>🎨 Elige un color</h3>
+      <button class="modal-color-cerrar" id="modal-color-cerrar" aria-label="Cerrar">✕</button>
+    </header>
+
+    <!-- Vista previa del color actual -->
+    <div class="modal-color-preview">
+      <div class="preview-circulo" id="preview-circulo"></div>
+      <div class="preview-info">
+        <span class="preview-hex" id="preview-hex">#3B322B</span>
+        <span class="preview-label">Color actual</span>
+      </div>
+    </div>
+
+    <!-- Colores básicos -->
+    <div class="modal-color-seccion">
+      <div class="seccion-titulo">Colores básicos</div>
+      <div class="paleta-grid" id="paleta-basicos"></div>
+    </div>
+
+    <!-- Color personalizado -->
+    <div class="modal-color-seccion">
+      <div class="seccion-titulo">
+        Color personalizado
+        <span class="seccion-hint">(toca para abrir el selector)</span>
+      </div>
+      <label class="color-custom-row">
+        <input type="color" id="color-custom" value="#3b322b" />
+        <span class="color-custom-hex" id="color-custom-hex">#3B322B</span>
+        <span class="color-custom-icono">🎨</span>
+      </label>
+    </div>
+
+    <!-- Recientes -->
+    <div class="modal-color-seccion" id="seccion-recientes" hidden>
+      <div class="seccion-titulo">Recientes</div>
+      <div class="paleta-grid" id="paleta-recientes"></div>
+    </div>
+
+    <!-- Botones -->
+    <div class="modal-color-botones">
+      <button class="btn-modal cancelar" id="btn-color-cancelar">Cancelar</button>
+      <button class="btn-modal aplicar" id="btn-color-aplicar">✓ Aplicar color</button>
+    </div>
+
   </div>
 </div>
 
