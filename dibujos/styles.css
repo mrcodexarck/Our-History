@@ -1121,36 +1121,44 @@ canvas {
 
   /* ---- BARRA DE HERRAMIENTAS EN MÓVIL (4 botones) ---- */
   .herramientas-wrap {
-    padding: 12px 10px 10px;
-    gap: 6px;
-    justify-content: space-between;
+    padding: 12px 8px 10px;
+    gap: 5px;
+    justify-content: center;
   }
   .btn-menu {
-    padding: 12px 12px;
-    min-height: 52px;
-    font-size: .95rem;
-    gap: 6px;
+    padding: 10px 10px;
+    min-height: 48px;
+    font-size: .85rem;
+    gap: 5px;
   }
-  .btn-menu-icono { width: 22px; height: 22px; }
-  .btn-menu-icono svg { width: 22px; height: 22px; }
+  .btn-menu-icono { width: 20px; height: 20px; }
+  .btn-menu-icono svg { width: 20px; height: 20px; }
 
   .btn-menu-lapices {
-    min-width: 100px;
-    max-width: 130px;
-    flex: 1 1 auto;
+    min-width: 90px;
+    max-width: 110px;
+    flex: 0 1 auto;
   }
   .btn-menu-lapices .btn-menu-texto {
-    max-width: 70px;
+    max-width: 60px;
   }
 
-  /* En móvil: Color, Deshacer y Limpiar son solo icono */
+  .btn-menu-chevron { font-size: .5rem; }
+
+   /* En móvil: Color, Deshacer y Limpiar con texto (igual que PC) */
   .btn-menu-icon-only {
-    padding: 12px 14px;
-    min-width: 48px;
+    padding: 10px 12px;
+    min-width: 0;
     flex: 0 0 auto;
+    gap: 5px;
+    font-size: .82rem;
   }
+  .btn-menu-icon-only .btn-menu-icono { width: 18px; height: 18px; }
+  .btn-menu-icon-only .btn-menu-icono svg { width: 18px; height: 18px; }
   .btn-menu-icon-only .btn-menu-texto {
-    display: none;
+    display: inline;
+    max-width: 70px;
+    font-size: .82rem;
   }
 
   .menu-lapices {
