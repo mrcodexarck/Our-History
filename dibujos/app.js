@@ -286,14 +286,31 @@ function cambiarHoja(nuevaHoja) {
 }
 
 /* ============================================================
-   PALETA RÁPIDA (lápices)
+   PALETA RÁPIDA (lápices) + COLOR PERSONALIZADO
 ============================================================ */
-const COLORES = [
+
+/* Paleta por defecto — el usuario puede reemplazar colores */
+const COLORES_DEFAULT = [
   "#3b322b", "#7d6c5c", "#b58a5a", "#d9a86c",
   "#e88a7a", "#e8b07a", "#f4d03f", "#a8c66c",
   "#7da654", "#7cc0d4", "#5b8fb0", "#8b6cb0",
   "#e88ea7", "#c9524a", "#ffffff", "#000000"
 ];
+
+const COLORES = [...COLORES_DEFAULT];
+const PALETA_KEY = "dibujos-paleta-rapida";
+
+/* Cargar paleta personalizada si existe */
+try {
+  const guardada = JSON.parse(localStorage.getItem(PALETA_KEY) || "null");
+  if (Array.isArray(guardada) && guardada.length === COLORES.length) {
+    guardada.forEach((hex, i) => {
+      if (typeof hex === "string" && /^#[0-9a-f]{6}$/i.test(hex)) {
+        COLORES[i] = hex;
+      }
+    });
+  }
+} catch(e) { /* ignorar */ }
 
 const lapicesEl = document.getElementById("lapices");
 function renderLapices() {
@@ -345,6 +362,75 @@ document.querySelectorAll(".tamanos button").forEach(btn => {
       .forEach(b => b.classList.toggle("active", b === btn));
   });
 });
+
+/* ============================================================
+   BOTÓN "COLOR" — Abre el selector nativo y reemplaza un color
+============================================================ */
+const colorInputHidden = document.getElementById("color-input-hidden");
+const btnColorPicker   = document.getElementById("btn-color-picker");
+
+btnColorPicker?.addEventListener("click", () => {
+  if (!colorInputHidden) return;
+
+  // Sincronizar con el color actual
+  colorInputHidden.value = colorActual;
+
+  // Abrir el selector nativo
+  if (typeof colorInputHidden.showPicker === "function") {
+    try {
+      colorInputHidden.showPicker();
+      return;
+    } catch (err) {
+      // si falla, usar click normal
+    }
+  }
+  colorInputHidden.click();
+});
+
+colorInputHidden?.addEventListener("input", e => {
+  const nuevoColor = e.target.value;
+  if (!nuevoColor) return;
+  reemplazarColorPaleta(nuevoColor);
+});
+
+async function reemplazarColorPaleta(nuevoColor) {
+  // ¿Cuál lápiz está activo? Si no hay, usamos el primero
+  const activo = document.querySelector(".lapiz.active");
+  let idx = 0;
+
+  if (activo) {
+    const hexActivo = activo.dataset.color;
+    const encontrado = COLORES.indexOf(hexActivo);
+    if (encontrado >= 0) idx = encontrado;
+  }
+
+  // Reemplazar en el array
+  COLORES[idx] = nuevoColor;
+
+  // Guardar
+  try {
+    localStorage.setItem(PALETA_KEY, JSON.stringify(COLORES));
+  } catch(err) { /* ignorar */ }
+
+  // Aplicar como color actual
+  colorActual = nuevoColor;
+  herramienta = "lapiz";
+
+  // Re-renderizar
+  renderLapices();
+
+  // Marcar el nuevo como activo
+  const nuevoLapiz = [...document.querySelectorAll(".lapiz")]
+    .find(l => l.dataset.color === nuevoColor);
+  nuevoLapiz?.classList.add("active");
+
+  // Marcar lápiz como herramienta
+  document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
+  document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+
+  // Feedback
+  if (typeof mostrarGuardado === "function") mostrarGuardado();
+}
 
 /* ============================================================
    UNDO
@@ -422,6 +508,17 @@ function setStatus(estado) {
   if (!statusDot) return;
   statusDot.classList.remove("conectado", "guardando");
   if (estado) statusDot.classList.add(estado);
+}
+
+/* ============================================================
+   GUARDADO (toast)
+============================================================ */
+function mostrarGuardado() {
+  const ind = document.getElementById("save-indicator");
+  if (!ind) return;
+  ind.classList.add("visible");
+  clearTimeout(ind._timeout);
+  ind._timeout = setTimeout(() => ind.classList.remove("visible"), 900);
 }
 
 /* ============================================================
@@ -796,150 +893,6 @@ document.getElementById("message-overlay").addEventListener("click", e => {
   if (e.target === document.getElementById("message-overlay")) cerrarMensaje();
 });
 document.getElementById("message-guardar").addEventListener("click", guardarMensaje);
-
-/* ============================================================
-   COLOR PICKER (estilo Paint)
-============================================================ */
-const PALETA_PRESETS = [
-  // Neutros
-  "#000000", "#3b322b", "#6b5b4a", "#a89a86", "#d9cfbf", "#ffffff", "#f5f0e6", "#e8e0d0",
-  // Básicos
-  "#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#ec407a", "#00acc1",
-  // Pastel
-  "#ffcdd2", "#ffe0b2", "#fff9c4", "#c8e6c9", "#bbdefb", "#e1bee7", "#f8bbd0", "#b2ebf2",
-  // Oscuros
-  "#b71c1c", "#e65100", "#f57f17", "#1b5e20", "#0d47a1", "#4a148c", "#880e4f", "#004d40",
-  // Tierra
-  "#8d6e63", "#a1887f", "#bcaaa4", "#d7ccc8", "#795548", "#5d4037", "#a0703c", "#c9a37a",
-  // Neón
-  "#ff1744", "#ff9100", "#ffea00", "#00e676", "#00b0ff", "#d500f9", "#ff4081", "#18ffff",
-];
-
-let recientesColores = [];
-let colorTemp = "#3b322b";
-
-try {
-  recientesColores = JSON.parse(localStorage.getItem("dibujos-colores-recientes") || "[]");
-} catch(e) { recientesColores = []; }
-
-const modalColor       = document.getElementById("modal-color");
-const modalColorCerrar = document.getElementById("modal-color-cerrar");
-const paletaBasic      = document.getElementById("paleta-basicos");
-const paletaRecient    = document.getElementById("paleta-recientes");
-const seccionRecient   = document.getElementById("seccion-recientes");
-const colorCustomInput = document.getElementById("color-custom");
-const colorCustomHexEl = document.getElementById("color-custom-hex");
-const previewCirculo   = document.getElementById("preview-circulo");
-const previewHexEl     = document.getElementById("preview-hex");
-const btnColorPicker   = document.getElementById("btn-color-picker");
-const btnColorCancelar = document.getElementById("btn-color-cancelar");
-const btnColorAplicar  = document.getElementById("btn-color-aplicar");
-
-function inicializarPaletaColorPicker() {
-  if (!paletaBasic) return;
-  paletaBasic.innerHTML = "";
-  PALETA_PRESETS.forEach(color => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "paleta-swatch";
-    btn.style.background = color;
-    btn.dataset.color = color;
-    btn.addEventListener("click", () => seleccionarColorTemp(color));
-    paletaBasic.appendChild(btn);
-  });
-}
-
-function renderizarRecientes() {
-  if (!paletaRecient || !seccionRecient) return;
-  if (recientesColores.length === 0) {
-    seccionRecient.hidden = true;
-    return;
-  }
-  seccionRecient.hidden = false;
-  paletaRecient.innerHTML = "";
-  recientesColores.slice(0, 16).forEach(color => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "paleta-swatch";
-    btn.style.background = color;
-    btn.dataset.color = color;
-    btn.addEventListener("click", () => seleccionarColorTemp(color));
-    paletaRecient.appendChild(btn);
-  });
-}
-
-function actualizarPreviewColor() {
-  if (previewCirculo) previewCirculo.style.background = colorTemp;
-  if (previewHexEl) previewHexEl.textContent = colorTemp.toUpperCase();
-  if (colorCustomInput) colorCustomInput.value = colorTemp;
-  if (colorCustomHexEl) colorCustomHexEl.textContent = colorTemp.toUpperCase();
-
-  document.querySelectorAll(".paleta-swatch").forEach(sw => {
-    sw.classList.toggle("seleccionado", sw.dataset.color === colorTemp);
-  });
-}
-
-function seleccionarColorTemp(color) {
-  colorTemp = color;
-  actualizarPreviewColor();
-}
-
-function abrirModalColor() {
-  if (!modalColor) return;
-  colorTemp = colorActual;
-  actualizarPreviewColor();
-  renderizarRecientes();
-  modalColor.hidden = false;
-}
-
-function cerrarModalColor() {
-  if (!modalColor) return;
-  modalColor.hidden = true;
-}
-
-function aplicarColorElegido() {
-  const hex = colorTemp;
-  const lapizExistente = [...document.querySelectorAll(".lapiz")]
-    .find(l => l.dataset.color === hex);
-
-  if (lapizExistente) {
-    seleccionarColor(hex, lapizExistente);
-  } else {
-    colorActual = hex;
-    herramienta = "lapiz";
-    document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
-    document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
-    document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
-  }
-
-  recientesColores = [hex, ...recientesColores.filter(c => c !== hex)].slice(0, 16);
-  try {
-    localStorage.setItem("dibujos-colores-recientes", JSON.stringify(recientesColores));
-  } catch(e) {}
-
-  if (typeof mostrarGuardado === "function") mostrarGuardado();
-  cerrarModalColor();
-}
-
-btnColorPicker?.addEventListener("click", abrirModalColor);
-modalColorCerrar?.addEventListener("click", cerrarModalColor);
-btnColorCancelar?.addEventListener("click", cerrarModalColor);
-btnColorAplicar?.addEventListener("click", aplicarColorElegido);
-modalColor?.addEventListener("click", e => {
-  if (e.target === modalColor) cerrarModalColor();
-});
-
-colorCustomInput?.addEventListener("input", e => {
-  seleccionarColorTemp(e.target.value);
-});
-
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !modalColor?.hidden) {
-    cerrarModalColor();
-  }
-});
-
-inicializarPaletaColorPicker();
 
 /* ============================================================
    INICIAR FIREBASE
