@@ -1074,10 +1074,11 @@ canvas {
   .panel-herramientas {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    max-height: 75vh;
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;                  /* 👈 LA CLAVE: el menú puede salir del panel */
     background: rgba(30, 20, 14, 0.98);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-top-left-radius: 24px;
     border-top-right-radius: 24px;
     box-shadow: 0 -10px 40px rgba(0,0,0,.8);
