@@ -197,7 +197,6 @@ function normalizarHex(hex) {
 function drawStroke(stroke) {
   if (!stroke) return;
 
-  // Relleno de bote
   if (stroke.type === "fill") {
     floodFillSilencioso(stroke.x, stroke.y, stroke.hex);
     return;
@@ -314,7 +313,8 @@ async function guardarRelleno(x, y, hex) {
 canvas.addEventListener("pointerdown", e => {
   if (e.pointerType === "touch" && e.isPrimary === false) return;
 
-  // Bote de pintura
+  cerrarTodosLosMenus();
+
   if (herramienta === "bote") {
     const p = getPos(e);
     floodFillSilencioso(Math.round(p.x), Math.round(p.y), colorActual);
@@ -432,7 +432,7 @@ function cambiarHoja(nuevaHoja) {
 }
 
 /* ============================================================
-   PALETA RÁPIDA (lápices)
+   PALETA RÁPIDA (lápices de colores)
 ============================================================ */
 const COLORES = [
   "#3b322b", "#7d6c5c", "#b58a5a", "#d9a86c",
@@ -463,38 +463,105 @@ function renderLapices() {
 function seleccionarColor(hex, btnEl) {
   colorActual = hex;
 
+  // Si estaba con borrador o bote, dejar esa herramienta
   if (herramienta !== "borrador" && herramienta !== "bote") {
     herramienta = "lapiz";
-    document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
-    document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+    actualizarBotonLapicesActivo();
   }
 
   document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
   btnEl?.classList.add("active");
-  actualizarPreviewColor();
-}
-
-function actualizarPreviewColor() {
-  // Reservado por si en el futuro quieres un indicador visual
 }
 
 renderLapices();
 
 /* ============================================================
-   HERRAMIENTAS
+   MENÚS DESPLEGABLES — Lápices y Acciones
 ============================================================ */
-document.querySelectorAll(".tool[data-tool]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    herramienta = btn.dataset.tool;
-    document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
+const ICONOS_TOOL = {
+  lapiz:    '<svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>',
+  marcador: '<svg viewBox="0 0 24 24"><path d="M15 3l6 6-9 9H6v-6l9-9z" fill="currentColor"/><rect x="3" y="19" width="18" height="2" rx="1" fill="currentColor"/></svg>',
+  pincel:   '<svg viewBox="0 0 24 24"><path d="M9.5 14.5c-1 2-3 3.5-6 4 2-3 3.5-5 5.5-6l.5 2z" fill="currentColor"/><path d="M14 10l-4 4-1-1 4-4c1-1 3-3 5-5 1.5-1.5 3-2 4-1 1 1 .5 2.5-1 4-2 2-4 4-5 3z" fill="currentColor"/></svg>',
+  borrador: '<svg viewBox="0 0 24 24"><path d="M20 20H7L3 16a2 2 0 010-3L14 2l8 8-7 7" fill="currentColor"/></svg>',
+  bote:     '<svg viewBox="0 0 24 24"><path d="M18 4l-1.5-1.5a1 1 0 00-1.4 0L4 13.5V17l8-8 4 4-8 8h3.5l10.5-10.5a1 1 0 000-1.4L18 4z" fill="currentColor"/><path d="M20 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z" fill="currentColor"/></svg>'
+};
 
-    if (herramienta === "borrador" || herramienta === "bote") {
+const NOMBRES_TOOL = {
+  lapiz:    "Lápiz",
+  marcador: "Marcador",
+  pincel:   "Pincel",
+  borrador: "Borrador",
+  bote:     "Bote"
+};
+
+const btnLapices     = document.getElementById("btn-lapices");
+const btnLapicesIcon = document.getElementById("btn-lapices-icono");
+const btnLapicesTxt  = document.getElementById("btn-lapices-texto");
+const menuLapices    = document.getElementById("menu-lapices");
+
+const btnAcciones    = document.getElementById("btn-acciones");
+const menuAcciones   = document.getElementById("menu-acciones");
+
+/* --- Abrir / cerrar menús --- */
+function cerrarTodosLosMenus() {
+  menuLapices?.classList.remove("abierto");
+  btnLapices?.classList.remove("abierto");
+  menuAcciones?.classList.remove("abierto");
+  btnAcciones?.classList.remove("abierto");
+}
+
+btnLapices?.addEventListener("click", e => {
+  e.stopPropagation();
+  const abierto = menuLapices?.classList.contains("abierto");
+  cerrarTodosLosMenus();
+  if (!abierto) {
+    menuLapices?.classList.add("abierto");
+    btnLapices?.classList.add("abierto");
+  }
+});
+
+btnAcciones?.addEventListener("click", e => {
+  e.stopPropagation();
+  const abierto = menuAcciones?.classList.contains("abierto");
+  cerrarTodosLosMenus();
+  if (!abierto) {
+    menuAcciones?.classList.add("abierto");
+    btnAcciones?.classList.add("abierto");
+  }
+});
+
+// Cerrar al tocar fuera
+document.addEventListener("click", e => {
+  if (!e.target.closest(".bloque-menu")) {
+    cerrarTodosLosMenus();
+  }
+});
+
+/* --- Función para actualizar el botón de Lápices --- */
+function actualizarBotonLapicesActivo() {
+  document.querySelectorAll(".tool-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.tool === herramienta);
+  });
+  if (btnLapicesIcon) btnLapicesIcon.innerHTML = ICONOS_TOOL[herramienta] || "";
+  if (btnLapicesTxt)  btnLapicesTxt.textContent = NOMBRES_TOOL[herramienta] || "Lápiz";
+}
+
+/* --- Items de herramientas dentro del menú --- */
+document.querySelectorAll(".tool-item").forEach(item => {
+  item.addEventListener("click", () => {
+    const tool = item.dataset.tool;
+    herramienta = tool;
+
+    actualizarBotonLapicesActivo();
+
+    if (tool === "borrador" || tool === "bote") {
       document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
     } else {
       const match = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color === colorActual);
       match?.classList.add("active");
     }
+
+    cerrarTodosLosMenus();
   });
 });
 
@@ -513,6 +580,7 @@ document.querySelectorAll(".tamanos button").forEach(btn => {
    DESHACER
 ============================================================ */
 document.getElementById("btn-undo")?.addEventListener("click", async () => {
+  cerrarTodosLosMenus();
   if (!firebaseListo || !strokesRefs[hojaActual]) return;
 
   const misTrazos = localStrokes
@@ -536,6 +604,7 @@ document.getElementById("btn-undo")?.addEventListener("click", async () => {
    LIMPIAR
 ============================================================ */
 document.getElementById("btn-clear")?.addEventListener("click", async () => {
+  cerrarTodosLosMenus();
   if (!confirm("¿Borrar todo el dibujo de esta hoja?")) return;
   if (!firebaseListo || !strokesRefs[hojaActual]) return;
 
@@ -741,14 +810,7 @@ function mensajeDelOtro() {
 function actualizarBanana() {
   const badge = document.getElementById("banana-badge");
   if (!badge) return;
-  const esMia = esMiHoja(hojaActual);
-  let mostrarBadge = false;
-  if (esMia) {
-    mostrarBadge = !!mensajeDelOtro();
-  } else {
-    mostrarBadge = !!mensajeDelOtro();
-  }
-  badge.hidden = !mostrarBadge;
+  badge.hidden = !mensajeDelOtro();
 }
 
 function abrirMensaje() {
@@ -792,11 +854,7 @@ async function guardarMensaje() {
   btn.textContent = "Guardando…";
 
   try {
-    if (!texto) {
-      await setDoc(mensajeDoc(), { [perfilActual]: "", actualizadoEn: Date.now() }, { merge: true });
-    } else {
-      await setDoc(mensajeDoc(), { [perfilActual]: texto, actualizadoEn: Date.now() }, { merge: true });
-    }
+    await setDoc(mensajeDoc(), { [perfilActual]: texto, actualizadoEn: Date.now() }, { merge: true });
 
     if (perfilActual === "joan") mensajeJoan = texto;
     else mensajeEmily = texto;
@@ -1048,8 +1106,7 @@ cpHexInput?.addEventListener("change", () => {
     return;
   }
   const rgb = hexToRgb(hex);
-  const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
-  cpState = hsv;
+  cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
   pintarGradientCanvas();
   actualizarTodoElPicker();
 });
@@ -1060,8 +1117,7 @@ cpHexInput?.addEventListener("keydown", e => { if (e.key === "Enter") cpHexInput
     const r = Math.max(0, Math.min(255, parseInt(cpRInput.value, 10) || 0));
     const g = Math.max(0, Math.min(255, parseInt(cpGInput.value, 10) || 0));
     const b = Math.max(0, Math.min(255, parseInt(cpBInput.value, 10) || 0));
-    const hsv = rgbToHsv(r, g, b);
-    cpState = hsv;
+    cpState = rgbToHsv(r, g, b);
     pintarGradientCanvas();
     actualizarTodoElPicker();
   });
@@ -1172,9 +1228,10 @@ window.addEventListener("resize", () => {
 });
 
 /* ============================================================
-   BOTÓN "COLOR" EN LA BARRA
+   BOTÓN "COLOR" — Botón independiente de la barra
 ============================================================ */
 document.getElementById("btn-color-picker")?.addEventListener("click", () => {
+  cerrarTodosLosMenus();
   abrirColorPicker(colorActual, hex => {
     colorActual = hex;
 
@@ -1193,8 +1250,7 @@ document.getElementById("btn-color-picker")?.addEventListener("click", () => {
 
     if (herramienta !== "borrador" && herramienta !== "bote") {
       herramienta = "lapiz";
-      document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
-      document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+      actualizarBotonLapicesActivo();
     }
 
     mostrarGuardado();
@@ -1262,6 +1318,9 @@ async function initFirebase() {
 pintarFondo();
 pintarBasicos();
 pintarCustom();
+
+// Marcar la herramienta inicial (lápiz)
+actualizarBotonLapicesActivo();
 
 if (perfilActual && PERFILES[perfilActual]) {
   configurarPerfil(perfilActual);
