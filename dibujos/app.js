@@ -100,6 +100,9 @@ let mensajeEmily = "";
 
 let perfilUnsubs = { joan: null, emily: null };
 
+/* 🆕 Álbum */
+let timeoutThumbnail = null;
+
 /* ============================================================
    HELPERS
 ============================================================ */
@@ -302,6 +305,8 @@ async function guardarRelleno(x, y, hex) {
       ts:     Date.now()
     });
     mostrarGuardado();
+    // 🆕 Guardar thumbnail para el álbum
+    programarGuardarThumbnail();
   } catch (err) {
     console.error("❌ Error guardando relleno:", err);
   }
@@ -387,6 +392,8 @@ async function terminarTrazo() {
       author: strokeToSave.author,
       ts:     strokeToSave.ts
     });
+    // 🆕 Guardar thumbnail para el álbum
+    programarGuardarThumbnail();
   } catch (err) {
     console.error("❌ Error guardando trazo:", err);
     currentStroke = null;
@@ -463,7 +470,6 @@ function renderLapices() {
 function seleccionarColor(hex, btnEl) {
   colorActual = hex;
 
-  // Si estaba con borrador o bote, dejar esa herramienta
   if (herramienta !== "borrador" && herramienta !== "bote") {
     herramienta = "lapiz";
     actualizarBotonLapicesActivo();
@@ -630,6 +636,12 @@ const drawerCerrar      = document.getElementById("drawer-cerrar");
 function abrirDrawer() {
   panelHerramientas?.classList.add("abierto");
   drawerOverlay?.classList.add("visible");
+  // Reset scroll de la paleta
+  if (lapicesEl) {
+    requestAnimationFrame(() => {
+      lapicesEl.scrollLeft = 0;
+    });
+  }
 }
 function cerrarDrawer() {
   panelHerramientas?.classList.remove("abierto");
@@ -695,6 +707,36 @@ function suscribirHoja(tab) {
     console.error("❌ Listener error:", err);
     setStatus(null);
   });
+}
+
+/* ============================================================
+   ÁLBUM — Guardar thumbnail del dibujo actual
+============================================================ */
+function programarGuardarThumbnail() {
+  clearTimeout(timeoutThumbnail);
+  timeoutThumbnail = setTimeout(guardarThumbnail, 2500);
+}
+
+async function guardarThumbnail() {
+  if (!firebaseListo || !perfilActual) return;
+  const docId = `${hoyISO()}-${hojaActual}`;
+  try {
+    const dataURL = canvas.toDataURL("image/jpeg", 0.72);
+    await setDoc(
+      doc(db, "parejas", PAREJA_ID, "album", docId),
+      {
+        imagen: dataURL,
+        fecha: hoyISO(),
+        hoja: hojaActual,
+        autor: perfilActual,
+        actualizadoEn: Date.now()
+      },
+      { merge: true }
+    );
+    console.log("🖼️ Thumbnail guardado:", docId);
+  } catch (err) {
+    console.warn("⚠️ Error guardando thumbnail:", err);
+  }
 }
 
 /* ============================================================
@@ -1235,7 +1277,6 @@ document.getElementById("btn-color-picker")?.addEventListener("click", () => {
   abrirColorPicker(colorActual, hex => {
     colorActual = hex;
 
-    // Reemplazar el lápiz activo (o el primero)
     const activo = document.querySelector(".lapiz.active");
     let idx = 0;
     if (activo) {
@@ -1344,6 +1385,9 @@ initFirebase();
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
     publicarPresencia();
+    // 🆕 Guardar thumbnail al salir
+    clearTimeout(timeoutThumbnail);
+    guardarThumbnail();
   } else if (document.visibilityState === "visible") {
     if (firebaseListo && perfilActual) publicarPresencia();
   }
