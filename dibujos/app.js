@@ -65,7 +65,7 @@ if (fechaAnioEl) fechaAnioEl.textContent = hoy.getFullYear();
    CANVAS
 ============================================================ */
 const canvas = document.getElementById("canvas");
-const ctx    = canvas.getContext("2d");
+const ctx    = canvas.getContext("2d", { willReadFrequently: true });
 const W = canvas.width;
 const H = canvas.height;
 const COLOR_FONDO = "#fdfaf3";
@@ -94,8 +94,6 @@ const strokesRefs = { 1: null, 2: null };
 const unsubscribers = { 1: null, 2: null };
 
 let presenciaInterval = null;
-let presenciaUnsub = null;
-
 let mensajeUnsub = null;
 let mensajeJoan  = "";
 let mensajeEmily = "";
@@ -128,10 +126,85 @@ function estilosDeTrazo() {
 }
 
 /* ============================================================
+   CONVERSIONES DE COLOR
+============================================================ */
+function hsvToRgb(h, s, v) {
+  s /= 100; v /= 100;
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60)       { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else              { r = c; b = x; }
+  return {
+    r: Math.round((r + m) * 255),
+    g: Math.round((g + m) * 255),
+    b: Math.round((b + m) * 255)
+  };
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    switch (max) {
+      case r: h = ((g - b) / d) % 6; break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  const s = max === 0 ? 0 : (d / max) * 100;
+  const v = max * 100;
+  return { h, s, v };
+}
+
+function rgbToHex(r, g, b) {
+  return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToRgb(hex) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return null;
+  return {
+    r: parseInt(m[1], 16),
+    g: parseInt(m[2], 16),
+    b: parseInt(m[3], 16)
+  };
+}
+
+function normalizarHex(hex) {
+  if (!hex) return null;
+  hex = String(hex).trim();
+  if (!hex.startsWith("#")) hex = "#" + hex;
+  if (/^#[0-9a-f]{3}$/i.test(hex)) {
+    hex = "#" + hex[1]+hex[1] + hex[2]+hex[2] + hex[3]+hex[3];
+  }
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return null;
+  return hex.toLowerCase();
+}
+
+/* ============================================================
    DIBUJO
 ============================================================ */
 function drawStroke(stroke) {
-  if (!stroke || stroke.type === "clear") return;
+  if (!stroke) return;
+
+  // Relleno de bote
+  if (stroke.type === "fill") {
+    floodFillSilencioso(stroke.x, stroke.y, stroke.hex);
+    return;
+  }
+
+  if (stroke.type === "clear") return;
+
   const pts = stroke.points;
   if (!pts || pts.length === 0) return;
 
@@ -167,13 +240,90 @@ function redrawAll() {
 }
 
 /* ============================================================
+   FLOOD FILL
+============================================================ */
+function floodFillSilencioso(startX, startY, fillColorHex) {
+  if (startX < 0 || startY < 0 || startX >= W || startY >= H) return;
+
+  const imgData = ctx.getImageData(0, 0, W, H);
+  const data = imgData.data;
+
+  const idx = (startY * W + startX) * 4;
+  const sr = data[idx], sg = data[idx + 1], sb = data[idx + 2], sa = data[idx + 3];
+
+  const rgbFill = hexToRgb(fillColorHex);
+  if (!rgbFill) return;
+  const fr = rgbFill.r, fg = rgbFill.g, fb = rgbFill.b;
+
+  if (sr === fr && sg === fg && sb === fb && sa === 255) return;
+
+  const tolerancia = 35;
+  const dentro = (i) => {
+    const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+    return Math.abs(r - sr) <= tolerancia &&
+           Math.abs(g - sg) <= tolerancia &&
+           Math.abs(b - sb) <= tolerancia &&
+           Math.abs(a - sa) <= tolerancia;
+  };
+
+  const stack = [[startX, startY]];
+  const visitados = new Uint8Array(W * H);
+
+  while (stack.length > 0) {
+    const [x, y] = stack.pop();
+    if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const pos = y * W + x;
+    if (visitados[pos]) continue;
+    visitados[pos] = 1;
+
+    const i = pos * 4;
+    if (!dentro(i)) continue;
+
+    data[i]     = fr;
+    data[i + 1] = fg;
+    data[i + 2] = fb;
+    data[i + 3] = 255;
+
+    stack.push([x + 1, y]);
+    stack.push([x - 1, y]);
+    stack.push([x, y + 1]);
+    stack.push([x, y - 1]);
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+}
+
+async function guardarRelleno(x, y, hex) {
+  if (!firebaseListo || !strokesRefs[hojaActual]) return;
+  try {
+    await addDoc(strokesRefs[hojaActual], {
+      type:   "fill",
+      x, y, hex,
+      author: myUid,
+      ts:     Date.now()
+    });
+    mostrarGuardado();
+  } catch (err) {
+    console.error("❌ Error guardando relleno:", err);
+  }
+}
+
+/* ============================================================
    POINTER EVENTS
 ============================================================ */
 canvas.addEventListener("pointerdown", e => {
-  if (!esMiHoja(hojaActual)) return;
   if (e.pointerType === "touch" && e.isPrimary === false) return;
-  canvas.setPointerCapture(e.pointerId);
 
+  // Bote de pintura
+  if (herramienta === "bote") {
+    const p = getPos(e);
+    floodFillSilencioso(Math.round(p.x), Math.round(p.y), colorActual);
+    guardarRelleno(Math.round(p.x), Math.round(p.y), colorActual);
+    e.preventDefault();
+    return;
+  }
+
+  canvas.setPointerCapture(e.pointerId);
   dibujando = true;
   const p = getPos(e);
   const s = estilosDeTrazo();
@@ -271,10 +421,6 @@ function cambiarHoja(nuevaHoja) {
     t.classList.toggle("active", parseInt(t.dataset.hoja, 10) === nuevaHoja)
   );
 
-  const enModoLectura = !esMiHoja(nuevaHoja);
-  document.body.classList.toggle("modo-lectura", enModoLectura);
-  document.getElementById("canvas-wrapper").classList.toggle("readonly", enModoLectura);
-
   localStrokes = [];
   currentStroke = null;
   pintarFondo();
@@ -286,31 +432,14 @@ function cambiarHoja(nuevaHoja) {
 }
 
 /* ============================================================
-   PALETA RÁPIDA (lápices) + COLOR PERSONALIZADO
+   PALETA RÁPIDA (lápices)
 ============================================================ */
-
-/* Paleta por defecto — el usuario puede reemplazar colores */
-const COLORES_DEFAULT = [
+const COLORES = [
   "#3b322b", "#7d6c5c", "#b58a5a", "#d9a86c",
   "#e88a7a", "#e8b07a", "#f4d03f", "#a8c66c",
   "#7da654", "#7cc0d4", "#5b8fb0", "#8b6cb0",
   "#e88ea7", "#c9524a", "#ffffff", "#000000"
 ];
-
-const COLORES = [...COLORES_DEFAULT];
-const PALETA_KEY = "dibujos-paleta-rapida";
-
-/* Cargar paleta personalizada si existe */
-try {
-  const guardada = JSON.parse(localStorage.getItem(PALETA_KEY) || "null");
-  if (Array.isArray(guardada) && guardada.length === COLORES.length) {
-    guardada.forEach((hex, i) => {
-      if (typeof hex === "string" && /^#[0-9a-f]{6}$/i.test(hex)) {
-        COLORES[i] = hex;
-      }
-    });
-  }
-} catch(e) { /* ignorar */ }
 
 const lapicesEl = document.getElementById("lapices");
 function renderLapices() {
@@ -333,20 +462,34 @@ function renderLapices() {
 
 function seleccionarColor(hex, btnEl) {
   colorActual = hex;
-  herramienta = "lapiz";
+
+  if (herramienta !== "borrador" && herramienta !== "bote") {
+    herramienta = "lapiz";
+    document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
+    document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+  }
+
   document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
   btnEl?.classList.add("active");
-  document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
-  document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+  actualizarPreviewColor();
 }
+
+function actualizarPreviewColor() {
+  // Reservado por si en el futuro quieres un indicador visual
+}
+
 renderLapices();
 
+/* ============================================================
+   HERRAMIENTAS
+============================================================ */
 document.querySelectorAll(".tool[data-tool]").forEach(btn => {
   btn.addEventListener("click", () => {
     herramienta = btn.dataset.tool;
     document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    if (herramienta === "borrador") {
+
+    if (herramienta === "borrador" || herramienta === "bote") {
       document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
     } else {
       const match = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color === colorActual);
@@ -355,6 +498,9 @@ document.querySelectorAll(".tool[data-tool]").forEach(btn => {
   });
 });
 
+/* ============================================================
+   TAMAÑOS
+============================================================ */
 document.querySelectorAll(".tamanos button").forEach(btn => {
   btn.addEventListener("click", () => {
     tamanoActual = parseInt(btn.dataset.size, 10) || 8;
@@ -364,121 +510,45 @@ document.querySelectorAll(".tamanos button").forEach(btn => {
 });
 
 /* ============================================================
-   BOTÓN "COLOR" — Abre el selector nativo y reemplaza un color
+   DESHACER
 ============================================================ */
-const colorInputHidden = document.getElementById("color-input-hidden");
-const btnColorPicker   = document.getElementById("btn-color-picker");
+document.getElementById("btn-undo")?.addEventListener("click", async () => {
+  if (!firebaseListo || !strokesRefs[hojaActual]) return;
 
-btnColorPicker?.addEventListener("click", () => {
-  if (!colorInputHidden) return;
+  const misTrazos = localStrokes
+    .filter(s => s.author === myUid)
+    .sort((a, b) => b.ts - a.ts);
 
-  // Sincronizar con el color actual
-  colorInputHidden.value = colorActual;
+  if (misTrazos.length === 0) return;
 
-  // Abrir el selector nativo
-  if (typeof colorInputHidden.showPicker === "function") {
-    try {
-      colorInputHidden.showPicker();
-      return;
-    } catch (err) {
-      // si falla, usar click normal
-    }
-  }
-  colorInputHidden.click();
-});
+  const ultimo = misTrazos[0];
+  const docId = `${hoyISO()}-${hojaActual}`;
 
-colorInputHidden?.addEventListener("input", e => {
-  const nuevoColor = e.target.value;
-  if (!nuevoColor) return;
-  reemplazarColorPaleta(nuevoColor);
-});
-
-async function reemplazarColorPaleta(nuevoColor) {
-  // ¿Cuál lápiz está activo? Si no hay, usamos el primero
-  const activo = document.querySelector(".lapiz.active");
-  let idx = 0;
-
-  if (activo) {
-    const hexActivo = activo.dataset.color;
-    const encontrado = COLORES.indexOf(hexActivo);
-    if (encontrado >= 0) idx = encontrado;
-  }
-
-  // Reemplazar en el array
-  COLORES[idx] = nuevoColor;
-
-  // Guardar
   try {
-    localStorage.setItem(PALETA_KEY, JSON.stringify(COLORES));
-  } catch(err) { /* ignorar */ }
-
-  // Aplicar como color actual
-  colorActual = nuevoColor;
-  herramienta = "lapiz";
-
-  // Re-renderizar
-  renderLapices();
-
-  // Marcar el nuevo como activo
-  const nuevoLapiz = [...document.querySelectorAll(".lapiz")]
-    .find(l => l.dataset.color === nuevoColor);
-  nuevoLapiz?.classList.add("active");
-
-  // Marcar lápiz como herramienta
-  document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
-  document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
-
-  // Feedback
-  if (typeof mostrarGuardado === "function") mostrarGuardado();
-}
+    await deleteDoc(doc(db, "parejas", PAREJA_ID, "dibujos", docId, "strokes", ultimo.id));
+    mostrarGuardado();
+  } catch (err) {
+    console.error("❌ Error borrando trazo:", err);
+  }
+});
 
 /* ============================================================
-   UNDO
+   LIMPIAR
 ============================================================ */
-const btnUndo = document.getElementById("btn-undo");
-if (btnUndo) {
-  btnUndo.addEventListener("click", async () => {
-    if (!esMiHoja(hojaActual)) return;
-    if (!firebaseListo || !strokesRefs[hojaActual]) return;
+document.getElementById("btn-clear")?.addEventListener("click", async () => {
+  if (!confirm("¿Borrar todo el dibujo de esta hoja?")) return;
+  if (!firebaseListo || !strokesRefs[hojaActual]) return;
 
-    const misTrazos = localStrokes
-      .filter(s => s.author === myUid)
-      .sort((a, b) => b.ts - a.ts);
-
-    if (misTrazos.length === 0) return;
-
-    const ultimo = misTrazos[0];
-    const docId = `${hoyISO()}-${hojaActual}`;
-
-    try {
-      await deleteDoc(doc(db, "parejas", PAREJA_ID, "dibujos", docId, "strokes", ultimo.id));
-    } catch (err) {
-      console.error("❌ Error borrando trazo:", err);
-    }
-  });
-}
-
-/* ============================================================
-   CLEAR
-============================================================ */
-const btnClear = document.getElementById("btn-clear");
-if (btnClear) {
-  btnClear.addEventListener("click", async () => {
-    if (!esMiHoja(hojaActual)) return;
-    if (!confirm("¿Borrar todo el dibujo de tu hoja?")) return;
-    if (!firebaseListo || !strokesRefs[hojaActual]) return;
-
-    try {
-      await addDoc(strokesRefs[hojaActual], {
-        type:   "clear",
-        author: myUid,
-        ts:     Date.now()
-      });
-    } catch (err) {
-      console.error("Error borrando todo:", err);
-    }
-  });
-}
+  try {
+    await addDoc(strokesRefs[hojaActual], {
+      type:   "clear",
+      author: myUid,
+      ts:     Date.now()
+    });
+  } catch (err) {
+    console.error("Error borrando todo:", err);
+  }
+});
 
 /* ============================================================
    DRAWER MÓVIL
@@ -510,9 +580,6 @@ function setStatus(estado) {
   if (estado) statusDot.classList.add(estado);
 }
 
-/* ============================================================
-   GUARDADO (toast)
-============================================================ */
 function mostrarGuardado() {
   const ind = document.getElementById("save-indicator");
   if (!ind) return;
@@ -620,10 +687,7 @@ async function guardarPerfil() {
   const emoji  = document.querySelector(".perfil-emoji-opcion.active")?.dataset.emoji
                   || PERFILES[perfilActual].emoji;
 
-  if (!nombre) {
-    alert("El nombre no puede estar vacío");
-    return;
-  }
+  if (!nombre) { alert("El nombre no puede estar vacío"); return; }
 
   const btn = document.getElementById("perfil-guardar");
   btn.disabled = true;
@@ -635,10 +699,7 @@ async function guardarPerfil() {
       actualizadoEn: Date.now()
     }, { merge: true });
 
-    PERFILES[perfilActual] = {
-      ...PERFILES[perfilActual],
-      nombre, emoji, cumple, bio
-    };
+    PERFILES[perfilActual] = { ...PERFILES[perfilActual], nombre, emoji, cumple, bio };
     actualizarUIconPerfiles();
 
     btn.textContent = "✓ Guardado";
@@ -650,10 +711,7 @@ async function guardarPerfil() {
   } catch (err) {
     console.error("Error guardando perfil:", err);
     btn.textContent = "Error al guardar";
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = "Guardar";
-    }, 1500);
+    setTimeout(() => { btn.disabled = false; btn.textContent = "Guardar"; }, 1500);
   }
 }
 
@@ -683,16 +741,13 @@ function mensajeDelOtro() {
 function actualizarBanana() {
   const badge = document.getElementById("banana-badge");
   if (!badge) return;
-
   const esMia = esMiHoja(hojaActual);
   let mostrarBadge = false;
-
   if (esMia) {
     mostrarBadge = !!mensajeDelOtro();
   } else {
     mostrarBadge = !!mensajeDelOtro();
   }
-
   badge.hidden = !mostrarBadge;
 }
 
@@ -738,15 +793,9 @@ async function guardarMensaje() {
 
   try {
     if (!texto) {
-      await setDoc(mensajeDoc(), {
-        [perfilActual]: "",
-        actualizadoEn: Date.now()
-      }, { merge: true });
+      await setDoc(mensajeDoc(), { [perfilActual]: "", actualizadoEn: Date.now() }, { merge: true });
     } else {
-      await setDoc(mensajeDoc(), {
-        [perfilActual]: texto,
-        actualizadoEn: Date.now()
-      }, { merge: true });
+      await setDoc(mensajeDoc(), { [perfilActual]: texto, actualizadoEn: Date.now() }, { merge: true });
     }
 
     if (perfilActual === "joan") mensajeJoan = texto;
@@ -762,10 +811,7 @@ async function guardarMensaje() {
   } catch (err) {
     console.error("Error guardando mensaje:", err);
     btn.textContent = "Error";
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = "Guardar mensaje";
-    }, 1500);
+    setTimeout(() => { btn.disabled = false; btn.textContent = "Guardar mensaje"; }, 1500);
   }
 }
 
@@ -782,9 +828,7 @@ async function publicarPresencia() {
       vistoEn: Date.now(),
       tab: hojaActual
     });
-  } catch (err) {
-    console.warn("Error presencia:", err);
-  }
+  } catch (err) { console.warn("Error presencia:", err); }
 }
 
 function iniciarPresencia() {
@@ -802,33 +846,23 @@ const overlayEditar = document.getElementById("perfil-editar-overlay");
 function abrirModalPerfil() {
   if (!perfilActual) return;
   const p = PERFILES[perfilActual];
-
   document.getElementById("perfil-input-nombre").value = p.nombre || "";
   document.getElementById("perfil-input-cumple").value = p.cumple || "";
   document.getElementById("perfil-input-bio").value    = p.bio    || "";
-
   document.querySelectorAll(".perfil-emoji-opcion").forEach(b => {
     b.classList.toggle("active", b.dataset.emoji === p.emoji);
   });
-
   overlayEditar.hidden = false;
 }
-
-function cerrarModalPerfil() {
-  overlayEditar.hidden = true;
-}
+function cerrarModalPerfil() { overlayEditar.hidden = true; }
 
 /* ============================================================
    SELECTOR DE PERFIL
 ============================================================ */
 const perfilOverlay = document.getElementById("perfil-overlay");
 
-function mostrarSelectorPerfil() {
-  perfilOverlay?.classList.remove("oculto");
-}
-function ocultarSelectorPerfil() {
-  perfilOverlay?.classList.add("oculto");
-}
+function mostrarSelectorPerfil() { perfilOverlay?.classList.remove("oculto"); }
+function ocultarSelectorPerfil() { perfilOverlay?.classList.add("oculto"); }
 
 document.querySelectorAll(".perfil-opcion").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -865,11 +899,314 @@ function pintarTabsConEstado() {
 }
 
 /* ============================================================
-   EVENT LISTENERS DE MODALES
+   SELECTOR DE COLORES estilo Paint
 ============================================================ */
-document.getElementById("perfil-btn").addEventListener("click", abrirModalPerfil);
-document.getElementById("perfil-editar-cerrar").addEventListener("click", cerrarModalPerfil);
-overlayEditar.addEventListener("click", e => {
+const COLOR_BASICOS = [
+  "#c9534a","#e53935","#8b2d1f","#5d3a2a","#3b322b","#000000","#cfd8dc","#8fd6ec",
+  "#4fc3f7","#1e88e5","#1565c0","#0d2f5c","#fff3b0","#ffd54f","#ffb74d","#ff8a65",
+  "#bcaaa4","#795548","#c5e1a5","#aed581","#8bc34a","#4caf50","#2e7d32","#1b5e20",
+  "#f8bbd0","#ec407a","#ad1457","#6a1b9a","#b58a5a","#7d6c5c","#d9a86c","#c9a227",
+  "#ff5722","#7cc0d4","#5b8fb0","#8b6cb0","#ffffff","#e0e0e0","#9e9e9e","#616161",
+  "#424242","#212121"
+];
+
+const CUSTOM_KEY = "dibujos-colores-custom";
+let coloresCustom = [];
+try {
+  const saved = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]");
+  if (Array.isArray(saved)) coloresCustom = saved.slice(0, 16);
+} catch(e) {}
+
+let cpState = { h: 0, s: 0, v: 100 };
+let cpCallback = null;
+
+const cpOverlay        = document.getElementById("color-picker-overlay");
+const cpGradient       = document.getElementById("color-gradient");
+const cpGradientCanvas = document.getElementById("color-gradient-canvas");
+const cpGradientCursor = document.getElementById("color-gradient-cursor");
+const cpHue            = document.getElementById("color-hue");
+const cpHueCursor      = document.getElementById("color-hue-cursor");
+const cpPreviewBox     = document.getElementById("color-preview-box");
+const cpHexInput       = document.getElementById("color-hex-input");
+const cpRInput         = document.getElementById("color-r-input");
+const cpGInput         = document.getElementById("color-g-input");
+const cpBInput         = document.getElementById("color-b-input");
+const cpBasicos        = document.getElementById("color-basicos");
+const cpCustomGrid     = document.getElementById("color-custom");
+const cpAddCustom      = document.getElementById("color-add-custom");
+const cpCerrar         = document.getElementById("color-picker-cerrar");
+const cpCancelar       = document.getElementById("color-cancelar");
+const cpAplicar        = document.getElementById("color-aplicar");
+
+let cpRgbActual = { r: 0, g: 0, b: 0 };
+let cpHexActual = "#000000";
+
+function pintarGradientCanvas() {
+  if (!cpGradientCanvas) return;
+  const c = cpGradientCanvas;
+  const ctxG = c.getContext("2d");
+  const w = c.clientWidth || 300;
+  const h = c.clientHeight || 200;
+  c.width = w;
+  c.height = h;
+
+  const gradH = ctxG.createLinearGradient(0, 0, w, 0);
+  const hueRgb = hsvToRgb(cpState.h, 100, 100);
+  gradH.addColorStop(0, "#ffffff");
+  gradH.addColorStop(1, rgbToHex(hueRgb.r, hueRgb.g, hueRgb.b));
+  ctxG.fillStyle = gradH;
+  ctxG.fillRect(0, 0, w, h);
+
+  const gradV = ctxG.createLinearGradient(0, 0, 0, h);
+  gradV.addColorStop(0, "rgba(0,0,0,0)");
+  gradV.addColorStop(1, "rgba(0,0,0,1)");
+  ctxG.fillStyle = gradV;
+  ctxG.fillRect(0, 0, w, h);
+}
+
+function posicionarCursorGradient() {
+  if (!cpGradientCursor || !cpGradient) return;
+  const x = (cpState.s / 100) * cpGradient.clientWidth;
+  const y = (1 - cpState.v / 100) * cpGradient.clientHeight;
+  cpGradientCursor.style.left = x + "px";
+  cpGradientCursor.style.top  = y + "px";
+}
+
+function posicionarCursorHue() {
+  if (!cpHueCursor) return;
+  cpHueCursor.style.top = (cpState.h / 360) * 100 + "%";
+}
+
+function actualizarDesdeGradient(clientX, clientY) {
+  const rect = cpGradient.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width,  clientX - rect.left));
+  const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+  cpState.s = (x / rect.width) * 100;
+  cpState.v = (1 - y / rect.height) * 100;
+  actualizarTodoElPicker();
+}
+
+let draggingGradient = false;
+cpGradient?.addEventListener("pointerdown", e => {
+  draggingGradient = true;
+  cpGradient.setPointerCapture(e.pointerId);
+  actualizarDesdeGradient(e.clientX, e.clientY);
+  e.preventDefault();
+});
+cpGradient?.addEventListener("pointermove", e => {
+  if (!draggingGradient) return;
+  actualizarDesdeGradient(e.clientX, e.clientY);
+  e.preventDefault();
+});
+cpGradient?.addEventListener("pointerup", () => { draggingGradient = false; });
+cpGradient?.addEventListener("pointercancel", () => { draggingGradient = false; });
+
+function actualizarDesdeHue(clientY) {
+  const rect = cpHue.getBoundingClientRect();
+  const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+  cpState.h = (y / rect.height) * 360;
+  actualizarTodoElPicker();
+  pintarGradientCanvas();
+}
+
+let draggingHue = false;
+cpHue?.addEventListener("pointerdown", e => {
+  draggingHue = true;
+  cpHue.setPointerCapture(e.pointerId);
+  actualizarDesdeHue(e.clientY);
+  e.preventDefault();
+});
+cpHue?.addEventListener("pointermove", e => {
+  if (!draggingHue) return;
+  actualizarDesdeHue(e.clientY);
+  e.preventDefault();
+});
+cpHue?.addEventListener("pointerup", () => { draggingHue = false; });
+cpHue?.addEventListener("pointercancel", () => { draggingHue = false; });
+
+function actualizarTodoElPicker(skipInputs = false) {
+  const rgb = hsvToRgb(cpState.h, cpState.s, cpState.v);
+  cpRgbActual = rgb;
+  cpHexActual = rgbToHex(rgb.r, rgb.g, rgb.b);
+
+  if (cpPreviewBox) cpPreviewBox.style.background = cpHexActual;
+  if (!skipInputs) {
+    if (cpHexInput) cpHexInput.value = cpHexActual.toUpperCase();
+    if (cpRInput)   cpRInput.value = rgb.r;
+    if (cpGInput)   cpGInput.value = rgb.g;
+    if (cpBInput)   cpBInput.value = rgb.b;
+  }
+
+  posicionarCursorGradient();
+  posicionarCursorHue();
+}
+
+cpHexInput?.addEventListener("change", () => {
+  const hex = normalizarHex(cpHexInput.value);
+  if (!hex) {
+    cpHexInput.value = cpHexActual.toUpperCase();
+    return;
+  }
+  const rgb = hexToRgb(hex);
+  const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+  cpState = hsv;
+  pintarGradientCanvas();
+  actualizarTodoElPicker();
+});
+cpHexInput?.addEventListener("keydown", e => { if (e.key === "Enter") cpHexInput.blur(); });
+
+[cpRInput, cpGInput, cpBInput].forEach(inp => {
+  inp?.addEventListener("change", () => {
+    const r = Math.max(0, Math.min(255, parseInt(cpRInput.value, 10) || 0));
+    const g = Math.max(0, Math.min(255, parseInt(cpGInput.value, 10) || 0));
+    const b = Math.max(0, Math.min(255, parseInt(cpBInput.value, 10) || 0));
+    const hsv = rgbToHsv(r, g, b);
+    cpState = hsv;
+    pintarGradientCanvas();
+    actualizarTodoElPicker();
+  });
+  inp?.addEventListener("keydown", e => { if (e.key === "Enter") inp.blur(); });
+});
+
+function pintarBasicos() {
+  if (!cpBasicos) return;
+  cpBasicos.innerHTML = "";
+  COLOR_BASICOS.forEach(hex => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "color-swatch-item";
+    b.style.background = hex;
+    b.title = hex.toUpperCase();
+    b.addEventListener("click", () => aplicarHexDelSwatch(hex));
+    cpBasicos.appendChild(b);
+  });
+}
+
+function pintarCustom() {
+  if (!cpCustomGrid) return;
+  cpCustomGrid.innerHTML = "";
+  for (let i = 0; i < 16; i++) {
+    const hex = coloresCustom[i];
+    if (!hex) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "color-swatch-item vacio";
+      b.disabled = true;
+      cpCustomGrid.appendChild(b);
+    } else {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "color-swatch-item";
+      b.style.background = hex;
+      b.title = hex.toUpperCase() + " (mantén pulsado para eliminar)";
+      b.addEventListener("click", () => aplicarHexDelSwatch(hex));
+      let pressTimer = null;
+      b.addEventListener("pointerdown", () => {
+        pressTimer = setTimeout(() => {
+          coloresCustom = coloresCustom.filter(c => c !== hex);
+          try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(coloresCustom)); } catch(e) {}
+          pintarCustom();
+          mostrarGuardado();
+        }, 700);
+      });
+      b.addEventListener("pointerup", () => clearTimeout(pressTimer));
+      b.addEventListener("pointerleave", () => clearTimeout(pressTimer));
+      cpCustomGrid.appendChild(b);
+    }
+  }
+}
+
+function aplicarHexDelSwatch(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return;
+  cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+  pintarGradientCanvas();
+  actualizarTodoElPicker();
+}
+
+cpAddCustom?.addEventListener("click", () => {
+  if (!cpHexActual) return;
+  coloresCustom = coloresCustom.filter(c => c !== cpHexActual);
+  coloresCustom.unshift(cpHexActual);
+  if (coloresCustom.length > 16) coloresCustom.length = 16;
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(coloresCustom)); } catch(e) {}
+  pintarCustom();
+  mostrarGuardado();
+});
+
+function abrirColorPicker(hexInicial, callback) {
+  const rgb = hexToRgb(hexInicial) || { r: 0, g: 0, b: 0 };
+  cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+  cpCallback = callback;
+
+  cpOverlay.hidden = false;
+
+  requestAnimationFrame(() => {
+    pintarGradientCanvas();
+    actualizarTodoElPicker();
+  });
+}
+
+function cerrarColorPicker() {
+  cpOverlay.hidden = true;
+  cpCallback = null;
+}
+
+function aplicarColorPicker() {
+  if (cpCallback) cpCallback(cpHexActual);
+  cerrarColorPicker();
+}
+
+cpCerrar?.addEventListener("click", cerrarColorPicker);
+cpCancelar?.addEventListener("click", cerrarColorPicker);
+cpAplicar?.addEventListener("click", aplicarColorPicker);
+cpOverlay?.addEventListener("click", e => {
+  if (e.target === cpOverlay) cerrarColorPicker();
+});
+
+window.addEventListener("resize", () => {
+  if (!cpOverlay.hidden) {
+    pintarGradientCanvas();
+    actualizarTodoElPicker();
+  }
+});
+
+/* ============================================================
+   BOTÓN "COLOR" EN LA BARRA
+============================================================ */
+document.getElementById("btn-color-picker")?.addEventListener("click", () => {
+  abrirColorPicker(colorActual, hex => {
+    colorActual = hex;
+
+    // Reemplazar el lápiz activo (o el primero)
+    const activo = document.querySelector(".lapiz.active");
+    let idx = 0;
+    if (activo) {
+      const encontrado = COLORES.indexOf(activo.dataset.color);
+      if (encontrado >= 0) idx = encontrado;
+    }
+    COLORES[idx] = hex;
+    renderLapices();
+
+    const nuevo = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color === hex);
+    nuevo?.classList.add("active");
+
+    if (herramienta !== "borrador" && herramienta !== "bote") {
+      herramienta = "lapiz";
+      document.querySelectorAll(".tool").forEach(t => t.classList.remove("active"));
+      document.querySelector('[data-tool="lapiz"]')?.classList.add("active");
+    }
+
+    mostrarGuardado();
+  });
+});
+
+/* ============================================================
+   EVENT LISTENERS GENERALES
+============================================================ */
+document.getElementById("perfil-btn")?.addEventListener("click", abrirModalPerfil);
+document.getElementById("perfil-editar-cerrar")?.addEventListener("click", cerrarModalPerfil);
+overlayEditar?.addEventListener("click", e => {
   if (e.target === overlayEditar) cerrarModalPerfil();
 });
 
@@ -880,19 +1217,19 @@ document.querySelectorAll(".perfil-emoji-opcion").forEach(btn => {
   });
 });
 
-document.getElementById("perfil-guardar").addEventListener("click", guardarPerfil);
+document.getElementById("perfil-guardar")?.addEventListener("click", guardarPerfil);
 
-document.getElementById("perfil-cambiar-usuario").addEventListener("click", () => {
+document.getElementById("perfil-cambiar-usuario")?.addEventListener("click", () => {
   cerrarModalPerfil();
   mostrarSelectorPerfil();
 });
 
-document.getElementById("banana-btn").addEventListener("click", abrirMensaje);
-document.getElementById("message-cerrar").addEventListener("click", cerrarMensaje);
-document.getElementById("message-overlay").addEventListener("click", e => {
+document.getElementById("banana-btn")?.addEventListener("click", abrirMensaje);
+document.getElementById("message-cerrar")?.addEventListener("click", cerrarMensaje);
+document.getElementById("message-overlay")?.addEventListener("click", e => {
   if (e.target === document.getElementById("message-overlay")) cerrarMensaje();
 });
-document.getElementById("message-guardar").addEventListener("click", guardarMensaje);
+document.getElementById("message-guardar")?.addEventListener("click", guardarMensaje);
 
 /* ============================================================
    INICIAR FIREBASE
@@ -923,6 +1260,8 @@ async function initFirebase() {
    ARRANQUE
 ============================================================ */
 pintarFondo();
+pintarBasicos();
+pintarCustom();
 
 if (perfilActual && PERFILES[perfilActual]) {
   configurarPerfil(perfilActual);
@@ -934,10 +1273,6 @@ if (perfilActual && PERFILES[perfilActual]) {
     t.classList.toggle("active", parseInt(t.dataset.hoja, 10) === miTab)
   );
   ocultarSelectorPerfil();
-
-  const enModoLectura = !esMiHoja(hojaActual);
-  document.body.classList.toggle("modo-lectura", enModoLectura);
-  document.getElementById("canvas-wrapper").classList.toggle("readonly", enModoLectura);
 } else {
   mostrarSelectorPerfil();
 }

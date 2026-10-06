@@ -12,11 +12,13 @@
 </head>
 <body>
 
-<!-- OVERLAY DE SELECCIÓN DE PERFIL -->
+<!-- ============================================================
+     OVERLAY DE SELECCIÓN DE PERFIL
+============================================================ -->
 <div class="perfil-overlay" id="perfil-overlay">
   <div class="perfil-card">
     <h1 class="perfil-titulo">¿Quién eres?</h1>
-    <p class="perfil-sub">Elige tu perfil para dibujar en tu hoja privada</p>
+    <p class="perfil-sub">Elige tu perfil para dibujar</p>
 
     <div class="perfil-opciones">
       <button type="button" class="perfil-opcion" data-perfil="joan">
@@ -29,10 +31,13 @@
       </button>
     </div>
 
-    <p class="perfil-nota">Solo podrás dibujar en tu propia hoja 🤎</p>
+    <p class="perfil-nota">Los dos pueden dibujar en las dos hojas 🤎</p>
   </div>
 </div>
 
+<!-- ============================================================
+     HEADER
+============================================================ -->
 <header class="app-header">
   <a href="../menu.html" class="icon-btn" aria-label="Volver">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -48,7 +53,9 @@
   </button>
 </header>
 
-<!-- Tabs de hojas -->
+<!-- ============================================================
+     TABS DE HOJAS
+============================================================ -->
 <div class="tabs-hojas" id="tabs-hojas">
   <button type="button" class="tab" data-hoja="1">
     <span class="tab-num">1</span>
@@ -60,11 +67,13 @@
   </button>
 </div>
 
+<!-- ============================================================
+     CANVAS
+============================================================ -->
 <div class="canvas-area">
   <div class="canvas-wrapper" id="canvas-wrapper">
     <canvas id="canvas" width="900" height="900"></canvas>
 
-    <!-- Banana para mensajes -->
     <button type="button" class="banana-btn" id="banana-btn" aria-label="Mensaje del día">
       <span class="banana-emoji">🍌</span>
       <span class="banana-badge" id="banana-badge" hidden></span>
@@ -72,11 +81,14 @@
   </div>
 </div>
 
+<!-- ============================================================
+     PANEL DE HERRAMIENTAS
+============================================================ -->
 <div class="panel-herramientas" id="panel-herramientas">
   <div class="drawer-handle"></div>
   <button type="button" class="drawer-cerrar" id="drawer-cerrar" aria-label="Cerrar">✕</button>
 
-  <!-- PALETA DE COLORES -->
+  <!-- Paleta de lápices -->
   <div class="paleta">
     <div class="paleta-titulo">
       <span>✏️ Colores</span>
@@ -84,7 +96,7 @@
     <div class="lapices" id="lapices"></div>
   </div>
 
-  <!-- HERRAMIENTAS -->
+  <!-- Herramientas -->
   <div class="herramientas" id="herramientas">
     <button type="button" class="tool active" data-tool="lapiz" title="Lápiz">
       <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>
@@ -101,6 +113,10 @@
     <button type="button" class="tool" data-tool="borrador" title="Borrador">
       <svg viewBox="0 0 24 24"><path d="M20 20H7L3 16a2 2 0 010-3L14 2l8 8-7 7" fill="currentColor"/></svg>
       <span>Borrar</span>
+    </button>
+    <button type="button" class="tool" data-tool="bote" title="Bote de pintura">
+      <svg viewBox="0 0 24 24"><path d="M18 4l-1.5-1.5a1 1 0 00-1.4 0L4 13.5V17l8-8 4 4-8 8h3.5l10.5-10.5a1 1 0 000-1.4L18 4z" fill="currentColor"/><path d="M20 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z" fill="currentColor"/></svg>
+      <span>Bote</span>
     </button>
     <button type="button" class="tool" id="btn-undo" title="Deshacer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
@@ -121,6 +137,7 @@
     </button>
   </div>
 
+  <!-- Tamaños -->
   <div class="tamanos" id="tamanos">
     <button type="button" data-size="3" title="Fino"><span style="width:4px;height:4px"></span></button>
     <button type="button" data-size="8" class="active" title="Normal"><span style="width:8px;height:8px"></span></button>
@@ -129,6 +146,9 @@
   </div>
 </div>
 
+<!-- ============================================================
+     BOTÓN FLOTANTE MÓVIL
+============================================================ -->
 <button type="button" class="btn-tools-mobile" id="btn-tools-mobile" aria-label="Herramientas">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="13.5" cy="6.5" r="2.5"/>
@@ -142,27 +162,26 @@
 
 <div class="drawer-overlay" id="drawer-overlay"></div>
 
+<!-- ============================================================
+     TOAST DE GUARDADO
+============================================================ -->
 <div class="save-indicator" id="save-indicator">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
   <span>Guardado</span>
 </div>
 
-<!-- INPUT COLOR OCULTO (se abre al tocar "Color") -->
-<input type="color" id="color-input-hidden" value="#3b322b" class="color-input-hidden" aria-hidden="true" tabindex="-1" />
-
-<!-- MODAL — MENSAJE DEL DÍA (banana) -->
+<!-- ============================================================
+     MODAL — MENSAJE DEL DÍA
+============================================================ -->
 <div class="message-overlay" id="message-overlay" hidden>
   <div class="message-card">
     <button type="button" class="message-cerrar" id="message-cerrar">✕</button>
-
     <div class="message-icono">🍌</div>
     <h3 class="message-titulo" id="message-titulo">Mensaje del día</h3>
     <p class="message-sub" id="message-sub">—</p>
-
     <div class="message-lectura" id="message-lectura" hidden>
       <p class="message-texto" id="message-texto">—</p>
     </div>
-
     <div class="message-editor" id="message-editor" hidden>
       <textarea id="message-input" maxlength="200" placeholder="Escribe algo lindo para el otro…" rows="4"></textarea>
       <button type="button" class="message-guardar" id="message-guardar">Guardar mensaje</button>
@@ -171,11 +190,12 @@
   </div>
 </div>
 
-<!-- MODAL — EDITAR PERFIL -->
+<!-- ============================================================
+     MODAL — EDITAR PERFIL
+============================================================ -->
 <div class="perfil-editar-overlay" id="perfil-editar-overlay" hidden>
   <div class="perfil-editar-card">
     <button type="button" class="perfil-editar-cerrar" id="perfil-editar-cerrar">✕</button>
-
     <h2 class="perfil-editar-titulo">Mi perfil</h2>
     <p class="perfil-editar-sub">Personaliza cómo te ves en la app</p>
 
@@ -209,10 +229,76 @@
     </label>
 
     <button type="button" class="perfil-guardar" id="perfil-guardar">Guardar</button>
+    <button type="button" class="perfil-cambiar-usuario" id="perfil-cambiar-usuario">🔄 Cambiar de usuario</button>
+  </div>
+</div>
 
-    <button type="button" class="perfil-cambiar-usuario" id="perfil-cambiar-usuario">
-      🔄 Cambiar de usuario
-    </button>
+<!-- ============================================================
+     MODAL — SELECTOR DE COLORES (estilo Paint)
+============================================================ -->
+<div class="color-picker-overlay" id="color-picker-overlay" hidden>
+  <div class="color-picker-card">
+    <div class="color-picker-header">
+      <h3>Editar colores</h3>
+      <button type="button" class="color-picker-cerrar" id="color-picker-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="color-picker-body">
+      <div class="color-picker-top">
+        <div class="color-picker-gradient" id="color-gradient">
+          <canvas id="color-gradient-canvas"></canvas>
+          <div class="color-gradient-cursor" id="color-gradient-cursor"></div>
+        </div>
+
+        <div class="color-picker-hue" id="color-hue">
+          <div class="color-hue-cursor" id="color-hue-cursor"></div>
+        </div>
+
+        <div class="color-picker-info">
+          <div class="color-picker-preview" id="color-preview-box"></div>
+
+          <div class="color-field-row">
+            <span class="color-field-tag">Hex</span>
+            <input type="text" id="color-hex-input" maxlength="7" value="#000000" spellcheck="false">
+          </div>
+
+          <div class="color-mode-label">RGB</div>
+
+          <div class="color-field-row compact">
+            <span class="color-field-tag">R</span>
+            <input type="number" id="color-r-input" min="0" max="255" value="0">
+          </div>
+          <div class="color-field-row compact">
+            <span class="color-field-tag">G</span>
+            <input type="number" id="color-g-input" min="0" max="255" value="0">
+          </div>
+          <div class="color-field-row compact">
+            <span class="color-field-tag">B</span>
+            <input type="number" id="color-b-input" min="0" max="255" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="color-picker-sections">
+        <div class="color-section">
+          <h4>Colores básicos</h4>
+          <div class="color-grid" id="color-basicos"></div>
+        </div>
+
+        <div class="color-section">
+          <h4>
+            Colores personalizados
+            <button type="button" class="color-add-custom" id="color-add-custom" title="Agregar color actual">＋</button>
+          </h4>
+          <div class="color-grid" id="color-custom"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="color-picker-footer">
+      <button type="button" class="color-btn cancelar" id="color-cancelar">Cancelar</button>
+      <button type="button" class="color-btn aplicar" id="color-aplicar">Aceptar</button>
+    </div>
   </div>
 </div>
 
