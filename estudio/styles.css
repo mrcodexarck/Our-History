@@ -72,8 +72,9 @@ body {
 ============================================================ */
 .estudio-main {
   flex: 1;
-  display: grid;
-  place-items: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 6px;
   overflow: hidden;
   min-height: 0;
@@ -88,8 +89,11 @@ body {
     0 20px 60px rgba(0,0,0,.7),
     0 0 0 1px #333;
   overflow: hidden;
+  /* Tamaño base que el JS ajustará. Si el JS no corre, esto evita que quede 0 */
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .canvas-wrapper canvas {

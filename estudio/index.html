@@ -4,169 +4,161 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#1a1a1a" />
-<title>Mi Estudio de Arte</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mis Proyectos" />
+<meta name="description" content="Mis Proyectos - Estudio de Arte" />
+
+<title>Mis Proyectos</title>
+
+<!-- Preconnect para Google Fonts (carga más rápida) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="home.css">
 </head>
 <body>
 
-<header class="estudio-header">
-  <a href="../menu.html" class="header-btn" aria-label="Volver">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<header class="home-header">
+
+  <a href="../menu.html" class="hbtn" aria-label="Volver al menú" title="Volver al menú">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
   </a>
 
-  <h1 class="header-titulo">🎨 Estudio de Arte</h1>
+  <h1 class="home-titulo" id="home-titulo">Mis Proyectos</h1>
 
-  <div class="header-acciones">
-    <button class="header-btn" id="btn-undo" title="Deshacer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-    </button>
-    <button class="header-btn" id="btn-redo" title="Rehacer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-7.7L21 8"/></svg>
-    </button>
-    <button class="header-btn" id="btn-save" title="Guardar PNG">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </button>
-    <button class="header-btn danger" id="btn-clear" title="Limpiar todo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-    </button>
-  </div>
+  <div class="home-count" id="home-count" aria-live="polite">—</div>
+
 </header>
 
-<main class="estudio-main">
-  <div class="canvas-wrapper" id="canvas-wrapper">
-    <canvas id="canvas" width="1000" height="1000"></canvas>
-    <canvas id="preview-canvas" width="1000" height="1000"></canvas>
-    <div class="text-layer" id="text-layer"></div>
+<!-- ============================================================
+     MAIN
+============================================================ -->
+<main class="home-main">
+
+  <!-- Estado vacío -->
+  <div class="home-vacio" id="home-vacio" hidden role="status">
+    <div class="vacio-icono" aria-hidden="true">🎨</div>
+    <h2>Aún no hay proyectos</h2>
+    <p>Toca <strong>+ Nuevo</strong> para empezar tu primera obra</p>
   </div>
+
+  <!-- Grid de proyectos -->
+  <div class="home-grid" id="home-grid" role="list" aria-label="Lista de proyectos"></div>
+
 </main>
 
-<footer class="estudio-footer">
-
-  <!-- HERRAMIENTAS -->
-  <div class="tools-bar">
-    <button class="tool active" data-tool="pencil" title="Lápiz">
-      <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>
-      <span>Lápiz</span>
-    </button>
-    <button class="tool" data-tool="brush" title="Pincel">
-      <svg viewBox="0 0 24 24"><path d="M9.5 14.5c-1 2-3 3.5-6 4 2-3 3.5-5 5.5-6l.5 2z" fill="currentColor"/><path d="M14 10l-4 4-1-1 4-4c1-1 3-3 5-5 1.5-1.5 3-2 4-1 1 1 .5 2.5-1 4-2 2-4 4-5 3z" fill="currentColor"/></svg>
-      <span>Pincel</span>
-    </button>
-    <button class="tool" data-tool="marker" title="Marcador">
-      <svg viewBox="0 0 24 24"><path d="M15 3l6 6-9 9H6v-6l9-9z" fill="currentColor"/><rect x="3" y="19" width="18" height="2" rx="1" fill="currentColor"/></svg>
-      <span>Marcador</span>
-    </button>
-    <button class="tool" data-tool="spray" title="Aerosol">
-      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="10" cy="15" r="1"/><circle cx="14" cy="15" r="1"/><rect x="8" y="18" width="8" height="3" rx="1"/><rect x="10" y="3" width="4" height="3" rx="1"/></svg>
-      <span>Aerosol</span>
-    </button>
-    <button class="tool" data-tool="eraser" title="Borrador">
-      <svg viewBox="0 0 24 24"><path d="M20 20H7L3 16a2 2 0 010-3L14 2l8 8-7 7" fill="currentColor"/></svg>
-      <span>Borrar</span>
-    </button>
-    <button class="tool" data-tool="line" title="Línea">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="5"/></svg>
-      <span>Línea</span>
-    </button>
-    <button class="tool" data-tool="rect" title="Rectángulo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-      <span>Rect</span>
-    </button>
-    <button class="tool" data-tool="circle" title="Círculo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/></svg>
-      <span>Círculo</span>
-    </button>
-<button class="tool" data-tool="fill" title="Rellenar">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/>
-    <path d="m5 2 5 5"/>
-    <path d="M2 13h15"/>
-    <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>
+<!-- ============================================================
+     BOTÓN FLOTANTE — Nuevo proyecto
+============================================================ -->
+<button type="button" class="fab" id="fab-nuevo" aria-label="Crear nuevo proyecto" title="Nuevo proyecto (Ctrl+N)">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
   </svg>
-  <span>Rellenar</span>
+  <span>Nuevo</span>
 </button>
-    <button class="tool" data-tool="text" title="Texto">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="9" y1="20" x2="15" y2="20"/></svg>
-      <span>Texto</span>
-    </button>
-  </div>
 
-  <!-- COLORES -->
-  <div class="colors-bar">
-    <div class="color-actual-wrap">
-      <div class="color-actual" id="color-actual" style="background:#3b322b"></div>
-      <input type="color" id="color-custom" value="#3b322b" />
-    </div>
-    <div class="paleta" id="paleta"></div>
-  </div>
+<!-- ============================================================
+     MODAL: Nuevo proyecto
+============================================================ -->
+<div class="modal" id="modal-nuevo" hidden role="dialog" aria-modal="true" aria-labelledby="modal-nuevo-titulo">
+  <div class="modal-caja">
 
-  <!-- SLIDERS -->
-  <div class="sliders-bar">
-    <div class="slider-wrap">
-      <span class="slider-label">Grosor</span>
-      <input type="range" id="slider-size" min="1" max="80" value="8" />
-      <span class="slider-val" id="size-val">8</span>
-    </div>
-    <div class="slider-wrap">
-      <span class="slider-label">Opacidad</span>
-      <input type="range" id="slider-opacity" min="5" max="100" value="100" />
-      <span class="slider-val" id="opacity-val">100%</span>
-    </div>
-  </div>
-
-</footer>
-
-<!-- Cursor de borrador -->
-<div class="eraser-cursor" id="eraser-cursor"></div>
-
-<!-- MODAL DE TEXTO -->
-<div class="texto-modal" id="texto-modal" hidden>
-  <div class="texto-modal-caja">
-    <header class="texto-modal-header">
-      <h3>✍️ Agregar texto</h3>
-      <button class="texto-modal-cerrar" id="texto-modal-cerrar">✕</button>
+    <header class="modal-header">
+      <h3 id="modal-nuevo-titulo">✨ Nuevo proyecto</h3>
+      <button type="button" class="modal-cerrar" id="modal-cerrar" aria-label="Cerrar">✕</button>
     </header>
 
-    <div class="texto-modal-body">
-      <label class="texto-campo">
-        <span class="texto-label">Tu texto</span>
-        <textarea id="texto-input" maxlength="100" rows="2" placeholder="Escribe algo aquí..."></textarea>
+    <div class="modal-body">
+
+      <label class="modal-campo">
+        <span class="modal-label">Nombre del proyecto</span>
+        <input
+          type="text"
+          id="proyecto-nombre"
+          maxlength="40"
+          placeholder="Ej: Mi primer paisaje"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="done"
+        />
       </label>
 
-      <div class="texto-opciones">
-        <label class="texto-campo-inline">
-          <span class="texto-label">Tamaño</span>
-          <input type="range" id="texto-size" min="12" max="200" value="60" />
-          <span class="texto-val" id="texto-size-val">60</span>
-        </label>
-
-        <label class="texto-campo-inline">
-          <span class="texto-label">Estilo</span>
-          <select id="texto-font">
-            <option value="Caveat">Manuscrita</option>
-            <option value="Playfair Display">Serif elegante</option>
-            <option value="Cormorant Garamond">Clásica</option>
-            <option value="system-ui">Sans-serif</option>
-          </select>
-        </label>
+      <div class="modal-campo">
+        <span class="modal-label">Tamaño del lienzo</span>
+        <div class="canvas-opciones" role="radiogroup" aria-label="Tamaño del lienzo">
+          <button type="button" class="canvas-op active" data-ratio="1" role="radio" aria-checked="true" aria-label="Cuadrado">
+            <div class="ratio-icon cuadrado" aria-hidden="true"></div>
+            <span>Cuadrado</span>
+          </button>
+          <button type="button" class="canvas-op" data-ratio="0.75" role="radio" aria-checked="false" aria-label="Vertical">
+            <div class="ratio-icon vertical" aria-hidden="true"></div>
+            <span>Vertical</span>
+          </button>
+          <button type="button" class="canvas-op" data-ratio="1.333" role="radio" aria-checked="false" aria-label="Horizontal">
+            <div class="ratio-icon horizontal" aria-hidden="true"></div>
+            <span>Horizontal</span>
+          </button>
+        </div>
       </div>
 
-      <div class="texto-preview">
-        <span class="texto-preview-label">Vista previa:</span>
-        <div class="texto-preview-text" id="texto-preview-text">Hola</div>
-      </div>
     </div>
 
-    <footer class="texto-modal-footer">
-      <button class="btn-modal cancelar" id="texto-cancelar">Cancelar</button>
-      <button class="btn-modal aplicar" id="texto-aplicar">✓ Agregar texto</button>
+    <footer class="modal-footer">
+      <button type="button" class="modal-btn cancelar" id="modal-cancelar">Cancelar</button>
+      <button type="button" class="modal-btn crear" id="modal-crear">Crear proyecto</button>
     </footer>
+
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- ============================================================
+     MODAL: Opciones de proyecto
+============================================================ -->
+<div class="modal" id="modal-menu" hidden role="dialog" aria-modal="true" aria-labelledby="menu-titulo">
+  <div class="modal-caja modal-caja-mini">
 
-<script type="module" src="app.js"></script>
+    <header class="modal-header">
+      <h3 id="menu-titulo">Opciones</h3>
+      <button type="button" class="modal-cerrar" id="menu-cerrar" aria-label="Cerrar">✕</button>
+    </header>
+
+    <div class="modal-body menu-lista">
+
+      <button type="button" class="menu-op" id="menu-renombrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        <span>Renombrar</span>
+      </button>
+
+      <button type="button" class="menu-op danger" id="menu-eliminar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6M14 11v6"/>
+        </svg>
+        <span>Eliminar proyecto</span>
+      </button>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     TOAST
+============================================================ -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="home.js"></script>
 </body>
 </html>
