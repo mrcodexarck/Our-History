@@ -1,5 +1,5 @@
 /* ============================================================
-   IMPORTS FIREBASE (deben ir arriba)
+   IMPORTS FIREBASE
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -19,10 +19,8 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
 }
 
 /* ============================================================
-   ESTUDIO DE ARTE — Motor de dibujo
+   REFERENCIAS DEL DOM
 ============================================================ */
-
-/* ---- Referencias ---- */
 const canvas        = document.getElementById("canvas");
 const ctx           = canvas.getContext("2d", { willReadFrequently: true });
 const previewCanvas = document.getElementById("preview-canvas");
@@ -33,7 +31,9 @@ let W = canvas.width;
 let H = canvas.height;
 const COLOR_FONDO = "#fdfaf3";
 
-/* ---- Estado ---- */
+/* ============================================================
+   ESTADO GENERAL
+============================================================ */
 let herramienta   = "pencil";
 let colorActual   = "#3b322b";
 let tamano        = 8;
@@ -44,12 +44,16 @@ let lastPoint     = null;
 let snapshotAntes = null;
 let textoPosicion = null;
 
-/* ---- Historial ---- */
+/* ============================================================
+   HISTORIAL
+============================================================ */
 const MAX_HISTORY = 25;
 const history = [];
 let historyIndex = -1;
 
-/* ---- Firebase / Proyecto ---- */
+/* ============================================================
+   FIREBASE / PROYECTO
+============================================================ */
 const fireApp  = initializeApp(FIREBASE_CONFIG);
 const fireDb   = getFirestore(fireApp);
 const fireAuth = getAuth(fireApp);
@@ -60,22 +64,107 @@ let proyectoFirestore = null;
 let firebaseListo = false;
 
 /* ============================================================
+   SISTEMA DE CAPAS
+============================================================ */
+/**
+ * Estructura de cada capa:
+ *   {
+ *     id: string único,
+ *     nombre: string,
+ *     visible: boolean,
+ *     bloqueada: boolean,
+ *     opacidad: number (0-1),
+ *     canvas: HTMLCanvasElement offscreen del tamaño W×H
+ *   }
+ */
+let capas = [];
+let capaActivaId = null;
+
+/* Crear una nueva capa con canvas offscreen del tamaño actual */
+function crearCapa(nombre, insertIndex = null) {
+  const cv = document.createElement("canvas");
+  cv.width  = W;
+  cv.height = H;
+
+  const capa = {
+    id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    nombre: nombre || ("Capa " + (capas.length + 1)),
+    visible: true,
+    bloqueada: false,
+    opacidad: 1,
+    canvas: cv
+  };
+
+  if (insertIndex === null || insertIndex >= capas.length) {
+    capas.push(capa);
+  } else {
+    capas.splice(insertIndex, 0, capa);
+  }
+  return capa;
+}
+
+/* Obtener la capa activa actual */
+function capaActiva() {
+  return capas.find(c => c.id === capaActivaId) || capas[capas.length - 1];
+}
+
+/* Obtener el contexto 2D de una capa (por defecto la activa) */
+function ctxCapa(capa = capaActiva()) {
+  return capa.canvas.getContext("2d", { willReadFrequently: true });
+}
+
+/* Cambiar la capa activa */
+function setCapaActiva(id) {
+  capaActivaId = id;
+  actualizarPanelCapas();
+}
+
+/* Recomponer: dibujar todas las capas visibles sobre el canvas principal */
+function recomponer() {
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = COLOR_FONDO;
+  ctx.fillRect(0, 0, W, H);
+
+  capas.forEach(capa => {
+    if (!capa.visible) return;
+    ctx.globalAlpha = capa.opacidad;
+    ctx.drawImage(capa.canvas, 0, 0);
+  });
+  ctx.globalAlpha = 1;
+}
+
+/* Redimensionar todos los canvases de las capas (al cambiar tamaño) */
+function redimensionarCapas(nuevoW, nuevoH) {
+  const copias = capas.map(c => {
+    const tmp = document.createElement("canvas");
+    tmp.width  = c.canvas.width;
+    tmp.height = c.canvas.height;
+    tmp.getContext("2d").drawImage(c.canvas, 0, 0);
+    return { capa: c, snapshot: tmp };
+  });
+
+  capas.forEach((capa, i) => {
+    capa.canvas.width  = nuevoW;
+    capa.canvas.height = nuevoH;
+    // Redibujar lo que había, escalado
+    const ctx2 = capa.canvas.getContext("2d");
+    ctx2.drawImage(copias[i].snapshot, 0, 0, nuevoW, nuevoH);
+  });
+}
+
+/* ============================================================
    PALETA
 ============================================================ */
 const PALETA = [
-  // Fila 1: neutros
   "#000000", "#3b322b", "#6b5b4a", "#a89a86", "#d9cfbf", "#ffffff",
-  // Fila 2: básicos
   "#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5", "#8e24aa",
-  // Fila 3: pasteles
   "#ffcdd2", "#ffe0b2", "#fff9c4", "#c8e6c9", "#bbdefb", "#e1bee7",
-  // Fila 4: oscuros
   "#b71c1c", "#e65100", "#f57f17", "#1b5e20", "#0d47a1", "#4a148c",
-  // Fila 5: tierra
   "#8d6e63", "#a1887f", "#d7ccc8", "#795548", "#5d4037", "#c9a37a",
 ];
 
 const paletaEl = document.getElementById("paleta");
+
 function renderPaleta() {
   paletaEl.innerHTML = "";
   PALETA.forEach(hex => {
@@ -135,13 +224,8 @@ sliderOpacity.addEventListener("input", () => {
 });
 
 /* ============================================================
-   INICIALIZACIÓN
+   HISTORIAL (guarda el estado COMPUESTO)
 ============================================================ */
-function pintarFondo() {
-  ctx.fillStyle = COLOR_FONDO;
-  ctx.fillRect(0, 0, W, H);
-}
-
 function guardarHistorial() {
   history.splice(historyIndex + 1);
   const estado = ctx.getImageData(0, 0, W, H);
@@ -174,7 +258,7 @@ function redo() {
 }
 
 /* ============================================================
-   POINTER — POSICIÓN
+   POSICIÓN DEL POINTER
 ============================================================ */
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -185,7 +269,7 @@ function getPos(e) {
 }
 
 /* ============================================================
-   ESTILOS DE TRAZO
+   ESTILO DE TRAZO
 ============================================================ */
 function aplicarEstilo(targetCtx, esBorrador = false) {
   targetCtx.strokeStyle = esBorrador ? COLOR_FONDO : colorActual;
@@ -220,6 +304,17 @@ const HERRAMIENTAS_LIBRES = ["pencil", "brush", "marker", "eraser", "spray"];
 const HERRAMIENTAS_FORMAS = ["line", "rect", "circle"];
 
 function iniciarTrazo(e) {
+  const capa = capaActiva();
+  if (!capa) return;
+  if (capa.bloqueada) {
+    mostrarToast("🔒 Capa bloqueada");
+    return;
+  }
+  if (!capa.visible) {
+    mostrarToast("👁️ Capa oculta");
+    return;
+  }
+
   const p = getPos(e);
   dibujando    = true;
   startPoint   = p;
@@ -228,20 +323,24 @@ function iniciarTrazo(e) {
   snapshotAntes = ctx.getImageData(0, 0, W, H);
 
   if (HERRAMIENTAS_LIBRES.includes(herramienta)) {
+    const lCtx = ctxCapa(capa);
+    aplicarEstilo(lCtx, herramienta === "eraser");
+    lCtx.globalAlpha *= capa.opacidad;
+    lCtx.beginPath();
+
     if (herramienta === "spray") {
-      sprayAt(ctx, p.x, p.y, tamano);
+      sprayAt(lCtx, p.x, p.y, tamano);
     } else {
-      const esBorrador = herramienta === "eraser";
-      aplicarEstilo(ctx, esBorrador);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      lCtx.arc(p.x, p.y, lCtx.lineWidth / 2, 0, Math.PI * 2);
+      lCtx.fill();
     }
+    lCtx.globalAlpha = 1;
+
   } else if (herramienta === "text") {
     textoPosicion = p;
     abrirModalTexto();
     dibujando = false;
+
   } else if (herramienta === "fill") {
     floodFill(p.x, p.y, colorActual);
     dibujando = false;
@@ -250,22 +349,45 @@ function iniciarTrazo(e) {
 
 function moverTrazo(e) {
   if (!dibujando) return;
+  const capa = capaActiva();
+  if (!capa) return;
+
   const p = getPos(e);
+  const lCtx = ctxCapa(capa);
+  const esBorrador = herramienta === "eraser";
 
   if (HERRAMIENTAS_LIBRES.includes(herramienta)) {
-    const esBorrador = herramienta === "eraser";
-    aplicarEstilo(ctx, esBorrador);
+    aplicarEstilo(lCtx, esBorrador);
+    lCtx.globalAlpha *= capa.opacidad;
 
     if (herramienta === "spray") {
-      sprayAt(ctx, p.x, p.y, tamano);
+      sprayAt(lCtx, p.x, p.y, tamano);
     } else {
-      ctx.beginPath();
-      ctx.moveTo(lastPoint.x, lastPoint.y);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
+      lCtx.beginPath();
+      lCtx.moveTo(lastPoint.x, lastPoint.y);
+      lCtx.lineTo(p.x, p.y);
+      lCtx.stroke();
+    }
+    lCtx.globalAlpha = 1;
+
+    // Vista previa en el composite (solo si la capa es visible)
+    if (capa.visible) {
+      aplicarEstilo(ctx, esBorrador);
+      ctx.globalAlpha *= capa.opacidad;
+
+      if (herramienta === "spray") {
+        sprayAt(ctx, p.x, p.y, tamano);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1;
     }
+
     lastPoint = p;
+
   } else if (HERRAMIENTAS_FORMAS.includes(herramienta)) {
     dibujarPreviewForma(startPoint, p);
   }
@@ -277,18 +399,24 @@ function finalizarTrazo(e) {
 
   if (HERRAMIENTAS_FORMAS.includes(herramienta) && startPoint) {
     const p = e ? getPos(e) : startPoint;
-    dibujarFormaFinal(startPoint, p);
+    const capa = capaActiva();
+    if (capa) {
+      const lCtx = ctxCapa(capa);
+      dibujarFormaFinalEn(lCtx, startPoint, p, capa);
+    }
     limpiarPreview();
   }
 
   if (snapshotAntes) {
+    // Recomponer antes de guardar para capturar el estado final
+    recomponer();
     guardarHistorial();
     snapshotAntes = null;
   }
+
   startPoint = null;
   lastPoint  = null;
 
-  // 🆕 Autoguardado después de cada trazo
   programarAutoguardado();
 }
 
@@ -300,7 +428,7 @@ function sprayAt(targetCtx, x, y, radio) {
   const radius  = radio * 1.5;
   targetCtx.save();
   targetCtx.fillStyle = colorActual;
-  targetCtx.globalAlpha = opacidad * 0.6;
+  targetCtx.globalAlpha = (targetCtx.globalAlpha || 1) * 0.6;
   for (let i = 0; i < density; i++) {
     const ang = Math.random() * Math.PI * 2;
     const r   = Math.random() * radius;
@@ -321,52 +449,41 @@ function dibujarPreviewForma(a, b) {
   previewCtx.save();
   aplicarEstilo(previewCtx);
   previewCtx.beginPath();
-
-  if (herramienta === "line") {
-    previewCtx.moveTo(a.x, a.y);
-    previewCtx.lineTo(b.x, b.y);
-    previewCtx.stroke();
-  } else if (herramienta === "rect") {
-    const x = Math.min(a.x, b.x);
-    const y = Math.min(a.y, b.y);
-    const w = Math.abs(b.x - a.x);
-    const h = Math.abs(b.y - a.y);
-    previewCtx.strokeRect(x, y, w, h);
-  } else if (herramienta === "circle") {
-    const cx = (a.x + b.x) / 2;
-    const cy = (a.y + b.y) / 2;
-    const rx = Math.abs(b.x - a.x) / 2;
-    const ry = Math.abs(b.y - a.y) / 2;
-    previewCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    previewCtx.stroke();
-  }
+  trazarForma(previewCtx, a, b);
+  previewCtx.stroke();
   previewCtx.restore();
 }
 
-function dibujarFormaFinal(a, b) {
-  ctx.save();
-  aplicarEstilo(ctx);
-  ctx.beginPath();
-
+function trazarForma(c, a, b) {
   if (herramienta === "line") {
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
+    c.moveTo(a.x, a.y);
+    c.lineTo(b.x, b.y);
   } else if (herramienta === "rect") {
     const x = Math.min(a.x, b.x);
     const y = Math.min(a.y, b.y);
     const w = Math.abs(b.x - a.x);
     const h = Math.abs(b.y - a.y);
-    ctx.strokeRect(x, y, w, h);
+    c.rect(x, y, w, h);
   } else if (herramienta === "circle") {
     const cx = (a.x + b.x) / 2;
     const cy = (a.y + b.y) / 2;
     const rx = Math.abs(b.x - a.x) / 2;
     const ry = Math.abs(b.y - a.y) / 2;
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
   }
-  ctx.restore();
+}
+
+function dibujarFormaFinalEn(targetCtx, a, b, capa) {
+  targetCtx.save();
+  aplicarEstilo(targetCtx);
+  targetCtx.globalAlpha *= (capa?.opacidad ?? 1);
+  targetCtx.beginPath();
+  trazarForma(targetCtx, a, b);
+  targetCtx.stroke();
+  targetCtx.restore();
+
+  // Recomponer para reflejar cambios
+  recomponer();
 }
 
 function limpiarPreview() {
@@ -374,23 +491,26 @@ function limpiarPreview() {
 }
 
 /* ============================================================
-   FLOOD FILL
+   FLOOD FILL (opera sobre la capa activa)
 ============================================================ */
 function floodFill(startX, startY, fillColorHex) {
-  const w = canvas.width;
-  const h = canvas.height;
+  const capa = capaActiva();
+  if (!capa) return;
+  if (capa.bloqueada) { mostrarToast("🔒 Capa bloqueada"); return; }
+  if (!capa.visible)  { mostrarToast("👁️ Capa oculta"); return; }
+
+  const layerCanvas = capa.canvas;
+  const lCtx = ctxCapa(capa);
+
+  const w = layerCanvas.width;
+  const h = layerCanvas.height;
 
   startX = Math.floor(startX);
   startY = Math.floor(startY);
 
-  if (startX < 0 || startX >= w || startY < 0 || startY >= h) {
-    console.log("❌ FloodFill: fuera del canvas");
-    return;
-  }
+  if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
 
-  console.log(`🎨 FloodFill en (${startX}, ${startY}) → ${fillColorHex}`);
-
-  const imgData = ctx.getImageData(0, 0, w, h);
+  const imgData = lCtx.getImageData(0, 0, w, h);
   const data = imgData.data;
 
   const startIdx = startY * w + startX;
@@ -401,16 +521,10 @@ function floodFill(startX, startY, fillColorHex) {
   const tB = data[i4 + 2];
   const tA = data[i4 + 3];
 
-  console.log(`🎯 Pixel objetivo: R=${tR} G=${tG} B=${tB} A=${tA}`);
-
   const fillRGB = hexToRgb(fillColorHex);
-  const fR = fillRGB.r;
-  const fG = fillRGB.g;
-  const fB = fillRGB.b;
-  const fA = 255;
+  const fR = fillRGB.r, fG = fillRGB.g, fB = fillRGB.b, fA = 255;
 
   if (Math.abs(tR - fR) < 5 && Math.abs(tG - fG) < 5 && Math.abs(tB - fB) < 5) {
-    console.log("⚠️ Mismo color, no se rellena");
     mostrarToast("⚠️ Ya está de ese color");
     return;
   }
@@ -437,64 +551,34 @@ function floodFill(startX, startY, fillColorHex) {
     head++;
 
     const idx = y * w + x;
-    const ii = idx * 4;
+    const ii  = idx * 4;
 
-    const r = data[ii];
-    const g = data[ii + 1];
-    const b = data[ii + 2];
-    const a = data[ii + 3];
+    const r = data[ii], g = data[ii+1], b = data[ii+2], a = data[ii+3];
 
     if (Math.abs(r - tR) > tolerance ||
         Math.abs(g - tG) > tolerance ||
         Math.abs(b - tB) > tolerance ||
         Math.abs(a - tA) > tolerance) continue;
 
-    data[ii]     = fR;
-    data[ii + 1] = fG;
-    data[ii + 2] = fB;
-    data[ii + 3] = fA;
+    data[ii]   = fR;
+    data[ii+1] = fG;
+    data[ii+2] = fB;
+    data[ii+3] = fA;
     filled++;
 
     if (filled > maxFilled) break;
 
-    if (x > 0) {
-      const ni = idx - 1;
-      if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x - 1; queueY[tail] = y; tail++; }
-    }
-    if (x < w - 1) {
-      const ni = idx + 1;
-      if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x + 1; queueY[tail] = y; tail++; }
-    }
-    if (y > 0) {
-      const ni = idx - w;
-      if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x; queueY[tail] = y - 1; tail++; }
-    }
-    if (y < h - 1) {
-      const ni = idx + w;
-      if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x; queueY[tail] = y + 1; tail++; }
-    }
+    if (x > 0)     { const ni = idx - 1; if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x-1; queueY[tail] = y; tail++; } }
+    if (x < w - 1) { const ni = idx + 1; if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x+1; queueY[tail] = y; tail++; } }
+    if (y > 0)     { const ni = idx - w; if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x; queueY[tail] = y-1; tail++; } }
+    if (y < h - 1) { const ni = idx + w; if (!visited[ni]) { visited[ni] = 1; queueX[tail] = x; queueY[tail] = y+1; tail++; } }
   }
 
-  console.log(`✅ Rellenados ${filled.toLocaleString()} píxeles`);
-
-  ctx.putImageData(imgData, 0, 0);
+  lCtx.putImageData(imgData, 0, 0);
+  recomponer();
   guardarHistorial();
-  mostrarToast(`🎨 ${filled.toLocaleString()} px rellenados`);
-
+  mostrarToast(`🎨 ${filled.toLocaleString()} px`);
   programarAutoguardado();
-}
-
-function pixelMatch(data, i, target, tol) {
-  return Math.abs(data[i]   - target[0]) <= tol &&
-         Math.abs(data[i+1] - target[1]) <= tol &&
-         Math.abs(data[i+2] - target[2]) <= tol &&
-         Math.abs(data[i+3] - target[3]) <= tol;
-}
-
-function colorsEqual(a, b) {
-  return Math.abs(a[0]-b[0]) < 5 &&
-         Math.abs(a[1]-b[1]) < 5 &&
-         Math.abs(a[2]-b[2]) < 5;
 }
 
 function hexToRgb(hex) {
@@ -541,7 +625,7 @@ canvas.addEventListener("pointerleave", e => {
 document.getElementById("btn-undo").addEventListener("click", undo);
 document.getElementById("btn-redo").addEventListener("click", redo);
 
-/* ---- GUARDAR (descarga PNG + guarda en Firestore) ---- */
+/* ---- GUARDAR ---- */
 document.getElementById("btn-save").addEventListener("click", async () => {
   const wrapperRect = canvas.getBoundingClientRect();
   const ratio = canvas.width / wrapperRect.width;
@@ -585,17 +669,8 @@ document.getElementById("btn-save").addEventListener("click", async () => {
 
   if (firebaseListo && PROYECTO_ID) {
     try {
-      await setDoc(
-        doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
-        {
-          thumbnail: thumbJPEG,
-          canvasData: fullPNG,
-          actualizadoEn: Date.now()
-        },
-        { merge: true }
-      );
+      await guardarProyectoEnFirestore(fullPNG, thumbJPEG);
       mostrarToast("💾 Guardado en la nube ✅");
-      console.log("☁️ Proyecto guardado en Firestore");
     } catch (err) {
       console.error("❌ Error guardando:", err);
       mostrarToast("⚠️ Local OK · error en nube");
@@ -605,7 +680,6 @@ document.getElementById("btn-save").addEventListener("click", async () => {
   }
 });
 
-/* ---- Generar thumbnail (canvas reutilizable = más rápido) ---- */
 function generateThumbnail(sourceCanvas, maxSize) {
   if (!generateThumbnail._canvas) {
     generateThumbnail._canvas = document.createElement("canvas");
@@ -625,16 +699,20 @@ function generateThumbnail(sourceCanvas, maxSize) {
   return temp.toDataURL("image/jpeg", 0.7);
 }
 
-/* ---- LIMPIAR ---- */
+/* ---- LIMPIAR (solo capa activa) ---- */
 document.getElementById("btn-clear").addEventListener("click", () => {
-  if (!confirm("¿Borrar todo el dibujo?")) return;
-  pintarFondo();
+  const capa = capaActiva();
+  if (!capa) return;
+  if (capa.bloqueada) { mostrarToast("🔒 Capa bloqueada"); return; }
 
-  const textLayer = document.getElementById("text-layer");
-  if (textLayer) textLayer.innerHTML = "";
+  if (!confirm("¿Borrar el contenido de esta capa?")) return;
 
+  const lCtx = ctxCapa(capa);
+  lCtx.clearRect(0, 0, W, H);
+
+  recomponer();
   guardarHistorial();
-  mostrarToast("🗑️ Lienzo limpio");
+  mostrarToast("🗑️ Capa limpiada");
   programarAutoguardado();
 });
 
@@ -643,6 +721,7 @@ document.getElementById("btn-clear").addEventListener("click", () => {
 ============================================================ */
 function mostrarToast(msg) {
   const t = document.getElementById("toast");
+  if (!t) return;
   t.textContent = msg;
   t.classList.add("visible");
   clearTimeout(t._timeout);
@@ -650,14 +729,14 @@ function mostrarToast(msg) {
 }
 
 /* ============================================================
-   ATAJOS DE TECLADO (PC)
+   ATAJOS DE TECLADO
 ============================================================ */
 document.addEventListener("keydown", e => {
   if (e.ctrlKey || e.metaKey) {
     if (e.key === "z" && !e.shiftKey) {
       e.preventDefault();
       undo();
-    } else if (e.key === "z" && e.shiftKey) {
+    } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
       e.preventDefault();
       redo();
     } else if (e.key === "s") {
@@ -672,8 +751,7 @@ document.addEventListener("keydown", e => {
     "c": "circle", "f": "fill", "t": "text"
   };
   if (map[e.key.toLowerCase()]) {
-    const tool = map[e.key.toLowerCase()];
-    document.querySelector(`[data-tool="${tool}"]`)?.click();
+    document.querySelector(`[data-tool="${map[e.key.toLowerCase()]}"]`)?.click();
   }
 });
 
@@ -686,7 +764,6 @@ function actualizarTamanoCursorBorrador() {
   const rect = canvas.getBoundingClientRect();
   const factor = rect.width / W;
   const diametro = tamano * 2 * factor;
-
   eraserCursor.style.width  = diametro + "px";
   eraserCursor.style.height = diametro + "px";
 }
@@ -713,13 +790,10 @@ function moverCursorBorrador(e) {
 
 canvas.addEventListener("pointermove", moverCursorBorrador);
 canvas.addEventListener("pointerdown", moverCursorBorrador);
-
 canvas.addEventListener("pointerleave", ocultarCursorBorrador);
 canvas.addEventListener("pointercancel", ocultarCursorBorrador);
 canvas.addEventListener("pointerup", e => {
-  if (e.pointerType === "touch") {
-    ocultarCursorBorrador();
-  }
+  if (e.pointerType === "touch") ocultarCursorBorrador();
 });
 
 document.getElementById("slider-size").addEventListener("input", () => {
@@ -730,11 +804,7 @@ document.getElementById("slider-size").addEventListener("input", () => {
 
 document.querySelectorAll(".tool").forEach(btn => {
   btn.addEventListener("click", () => {
-    if (btn.dataset.tool === "eraser") {
-      // Se mostrará al mover el cursor
-    } else {
-      ocultarCursorBorrador();
-    }
+    if (btn.dataset.tool !== "eraser") ocultarCursorBorrador();
   });
 });
 
@@ -745,84 +815,69 @@ window.addEventListener("resize", () => {
 });
 
 /* ============================================================
-   AJUSTAR RESOLUCIÓN DEL CANVAS AL TAMAÑO REAL DE PANTALLA
-============================================================ */
-/* ============================================================
-   AJUSTAR CANVAS AL TAMAÑO DISPONIBLE (respetando aspect-ratio)
+   AJUSTAR CANVAS AL TAMAÑO DISPONIBLE (respetando ratio)
 ============================================================ */
 function ajustarTamanoCanvas() {
-  const container = wrapper.parentElement;   // .estudio-main
+  const container = wrapper.parentElement;
   if (!container) return;
 
   const contRect = container.getBoundingClientRect();
   if (contRect.width === 0 || contRect.height === 0) return;
 
-  // Espacio disponible (restamos el padding del contenedor)
   const availW = contRect.width  - 12;
   const availH = contRect.height - 12;
   if (availW <= 0 || availH <= 0) return;
 
-  // Ratio del proyecto (o 1:1 por defecto)
   let ratio = 1;
-  if (proyectoFirestore && proyectoFirestore.ancho && proyectoFirestore.alto) {
+  if (proyectoFirestore?.ancho && proyectoFirestore?.alto) {
     ratio = proyectoFirestore.ancho / proyectoFirestore.alto;
   }
 
-  // Calcular el tamaño máximo que respeta el ratio
   let w = availW;
   let h = w / ratio;
+  if (h > availH) { h = availH; w = h * ratio; }
 
-  if (h > availH) {
-    h = availH;
-    w = h * ratio;
-  }
-
-  // Redondear para evitar decimales raros
   w = Math.round(w);
   h = Math.round(h);
 
-  // Aplicar tamaño al wrapper (esto hace que el canvas se centre)
   wrapper.style.width  = w + "px";
   wrapper.style.height = h + "px";
 
-  // Ajustar la resolución interna del canvas al tamaño del wrapper
   const dpr = window.devicePixelRatio || 1;
   const nuevoW = Math.round(w * dpr);
   const nuevoH = Math.round(h * dpr);
 
   if (canvas.width === nuevoW && canvas.height === nuevoH) return;
 
-  // Guardar dibujo actual
+  // Guardar estado compuesto
   let imgActual = null;
   if (canvas.width > 0 && canvas.height > 0) {
-    try {
-      imgActual = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    } catch (e) { imgActual = null; }
+    try { imgActual = ctx.getImageData(0, 0, canvas.width, canvas.height); }
+    catch (e) { imgActual = null; }
   }
 
-  // Redimensionar canvas (resolución interna)
+  // Redimensionar canvas principal y preview
   canvas.width  = nuevoW;
   canvas.height = nuevoH;
   previewCanvas.width  = nuevoW;
   previewCanvas.height = nuevoH;
 
+  const oldW = W;
+  const oldH = H;
   W = nuevoW;
   H = nuevoH;
 
-  // Rellenar fondo BLANCO (no negro)
-  ctx.fillStyle = COLOR_FONDO;
-  ctx.fillRect(0, 0, W, H);
+  // Redimensionar todas las capas proporcionalmente
+  redimensionarCapas(nuevoW, nuevoH);
 
-  // Restaurar dibujo anterior
-  if (imgActual) {
-    const tmp = document.createElement("canvas");
-    tmp.width  = imgActual.width;
-    tmp.height = imgActual.height;
-    tmp.getContext("2d").putImageData(imgActual, 0, 0);
-    ctx.drawImage(tmp, 0, 0, W, H);
+  // Si no hay capas, la creamos
+  if (capas.length === 0) {
+    const capa = crearCapa("Capa 1");
+    capaActivaId = capa.id;
   }
 
-  // Reiniciar historial
+  recomponer();
+
   history.length = 0;
   historyIndex = -1;
   guardarHistorial();
@@ -833,17 +888,266 @@ function ajustarTamanoCanvas() {
 window.addEventListener("resize", ajustarTamanoCanvas);
 window.addEventListener("orientationchange", () => setTimeout(ajustarTamanoCanvas, 250));
 
-setTimeout(ajustarTamanoCanvas, 100);
-window.addEventListener("load", ajustarTamanoCanvas);
-
 /* ============================================================
    ARRANQUE
 ============================================================ */
-pintarFondo();
+pintarFondoInicial();
+
+function pintarFondoInicial() {
+  ctx.fillStyle = COLOR_FONDO;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// Crear capa inicial
+if (capas.length === 0) {
+  const capa = crearCapa("Capa 1");
+  capaActivaId = capa.id;
+}
+
 guardarHistorial();
 renderPaleta();
 document.getElementById("color-actual").style.background = colorActual;
 document.getElementById("color-custom").value = colorActual;
+
+/* ============================================================
+   PANEL DE CAPAS — UI
+============================================================ */
+const capasPanel    = document.getElementById("capas-panel");
+const capasOverlay  = document.getElementById("capas-overlay");
+const capasLista    = document.getElementById("capas-lista");
+const btnCapas      = document.getElementById("btn-capas");
+const btnNuevaCapa  = document.getElementById("btn-nueva-capa");
+const btnCerrarCaps = document.getElementById("btn-cerrar-capas");
+
+function abrirPanelCapas() {
+  capasPanel.classList.add("abierto");
+  capasOverlay.classList.add("visible");
+  capasPanel.setAttribute("aria-hidden", "false");
+  btnCapas.classList.add("activo");
+  actualizarPanelCapas();
+}
+
+function cerrarPanelCapas() {
+  capasPanel.classList.remove("abierto");
+  capasOverlay.classList.remove("visible");
+  capasPanel.setAttribute("aria-hidden", "true");
+  btnCapas.classList.remove("activo");
+}
+
+btnCapas.addEventListener("click", () => {
+  if (capasPanel.classList.contains("abierto")) {
+    cerrarPanelCapas();
+  } else {
+    abrirPanelCapas();
+  }
+});
+btnCerrarCaps.addEventListener("click", cerrarPanelCapas);
+capasOverlay.addEventListener("click", cerrarPanelCapas);
+
+btnNuevaCapa.addEventListener("click", () => {
+  const capa = crearCapa();
+  setCapaActiva(capa.id);
+  actualizarPanelCapas();
+  mostrarToast("➕ Capa creada");
+  programarAutoguardado();
+});
+
+/* Iconos para el menú de capa */
+const ICONO_OJO_VISIBLE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const ICONO_OJO_OCULTO  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+const ICONO_ARRRIBA      = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
+const ICONO_ABAJO        = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+const ICONO_BLOQUEAR     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+const ICONO_BORRAR       = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`;
+
+function actualizarPanelCapas() {
+  capasLista.innerHTML = "";
+
+  // Iteramos en orden inverso (arriba = última en la lista)
+  for (let i = capas.length - 1; i >= 0; i--) {
+    const capa = capas[i];
+    const activa = capa.id === capaActivaId;
+
+    const item = document.createElement("div");
+    item.className = "capa-item";
+    if (activa) item.classList.add("activa");
+    if (!capa.visible) item.classList.add("oculta");
+    item.dataset.id = capa.id;
+
+    item.innerHTML = `
+      <button type="button" class="capa-visibilidad" aria-label="Mostrar/ocultar" title="Mostrar/ocultar">
+        ${capa.visible ? ICONO_OJO_VISIBLE : ICONO_OJO_OCULTO}
+      </button>
+
+      <span class="capa-nombre">${capa.nombre}</span>
+
+      <div class="capa-opacidad-wrap">
+        <input type="range" min="0" max="100" value="${Math.round(capa.opacidad * 100)}" aria-label="Opacidad de la capa">
+      </div>
+
+      <button type="button" class="capa-opciones" aria-label="Opciones">⋯</button>
+    `;
+
+    // Clic en la capa → activarla
+    item.addEventListener("click", (e) => {
+      if (e.target.closest(".capa-visibilidad") ||
+          e.target.closest(".capa-opciones")   ||
+          e.target.closest(".capa-opacidad-wrap") ||
+          e.target.closest(".capa-nombre-input")) return;
+      setCapaActiva(capa.id);
+    });
+
+    // Visibilidad
+    item.querySelector(".capa-visibilidad").addEventListener("click", (e) => {
+      e.stopPropagation();
+      capa.visible = !capa.visible;
+      recomponer();
+      actualizarPanelCapas();
+      programarAutoguardado();
+    });
+
+    // Opacidad
+    const slider = item.querySelector(".capa-opacidad-wrap input");
+    slider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      capa.opacidad = parseInt(e.target.value, 10) / 100;
+      recomponer();
+    });
+    slider.addEventListener("change", () => {
+      programarAutoguardado();
+    });
+    slider.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+    // Menú de opciones
+    item.querySelector(".capa-opciones").addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirMenuCapa(capa, item);
+    });
+
+    capasLista.appendChild(item);
+  }
+}
+
+function abrirMenuCapa(capa, itemEl) {
+  // Cerrar cualquier menú abierto
+  document.querySelectorAll(".capa-menu").forEach(m => m.remove());
+
+  const menu = document.createElement("div");
+  menu.className = "capa-menu";
+
+  menu.innerHTML = `
+    <button type="button" data-accion="renombrar">
+      ✏️ Renombrar
+    </button>
+    <button type="button" data-accion="subir" ${capas.indexOf(capa) === capas.length - 1 ? "disabled style='opacity:.4'" : ""}>
+      ${ICONO_ARRRIBA} Subir
+    </button>
+    <button type="button" data-accion="bajar" ${capas.indexOf(capa) === 0 ? "disabled style='opacity:.4'" : ""}>
+      ${ICONO_ABAJO} Bajar
+    </button>
+    <button type="button" data-accion="bloquear">
+      ${ICONO_BLOQUEAR} ${capa.bloqueada ? "Desbloquear" : "Bloquear"}
+    </button>
+    ${capas.length > 1 ? `
+      <button type="button" data-accion="eliminar" class="danger">
+        ${ICONO_BORRAR} Eliminar
+      </button>
+    ` : ""}
+  `;
+
+  itemEl.appendChild(menu);
+
+  // Cerrar al hacer clic fuera
+  setTimeout(() => {
+    const cerrar = (ev) => {
+      if (!menu.contains(ev.target)) {
+        menu.remove();
+        document.removeEventListener("pointerdown", cerrar);
+      }
+    };
+    document.addEventListener("pointerdown", cerrar);
+  }, 10);
+
+  // Acciones
+  menu.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const accion = btn.dataset.accion;
+      menu.remove();
+
+      if (accion === "renombrar") renombrarCapa(capa, itemEl);
+      else if (accion === "subir")   moverCapa(capa, 1);
+      else if (accion === "bajar")   moverCapa(capa, -1);
+      else if (accion === "bloquear") {
+        capa.bloqueada = !capa.bloqueada;
+        mostrarToast(capa.bloqueada ? "🔒 Bloqueada" : "🔓 Desbloqueada");
+        programarAutoguardado();
+      }
+      else if (accion === "eliminar") eliminarCapa(capa);
+    });
+  });
+}
+
+function renombrarCapa(capa, itemEl) {
+  const nombreSpan = itemEl.querySelector(".capa-nombre");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "capa-nombre-input";
+  input.value = capa.nombre;
+  input.maxLength = 30;
+
+  nombreSpan.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const confirmar = () => {
+    const nuevo = input.value.trim() || capa.nombre;
+    capa.nombre = nuevo;
+    actualizarPanelCapas();
+    programarAutoguardado();
+  };
+
+  input.addEventListener("blur", confirmar);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { input.value = capa.nombre; input.blur(); }
+  });
+}
+
+function moverCapa(capa, direccion) {
+  const idx = capas.indexOf(capa);
+  const nuevoIdx = idx + direccion;
+  if (nuevoIdx < 0 || nuevoIdx >= capas.length) return;
+
+  capas.splice(idx, 1);
+  capas.splice(nuevoIdx, 0, capa);
+
+  recomponer();
+  actualizarPanelCapas();
+  programarAutoguardado();
+}
+
+function eliminarCapa(capa) {
+  if (capas.length <= 1) {
+    mostrarToast("⚠️ Debe haber al menos 1 capa");
+    return;
+  }
+
+  const ok = confirm(`¿Eliminar "${capa.nombre}"?`);
+  if (!ok) return;
+
+  const idx = capas.indexOf(capa);
+  capas.splice(idx, 1);
+
+  if (capaActivaId === capa.id) {
+    const nuevaActiva = capas[Math.min(idx, capas.length - 1)];
+    capaActivaId = nuevaActiva.id;
+  }
+
+  recomponer();
+  actualizarPanelCapas();
+  mostrarToast("🗑️ Capa eliminada");
+  programarAutoguardado();
+}
 
 /* ============================================================
    MODAL DE TEXTO
@@ -860,14 +1164,11 @@ const textoBtnAplicar = document.getElementById("texto-aplicar");
 
 function abrirModalTexto() {
   if (!textoModal) return;
-
   textoInput.value = "";
   textoSizeSlider.value = Math.max(20, tamano * 5);
   textoSizeVal.textContent = textoSizeSlider.value;
   textoFontSelect.value = "Caveat";
-
   actualizarPreviewTexto();
-
   textoModal.hidden = false;
   setTimeout(() => textoInput.focus(), 100);
 }
@@ -880,32 +1181,25 @@ function cerrarModalTexto() {
 
 function actualizarPreviewTexto() {
   if (!textoPreview) return;
-  const size    = parseInt(textoSizeSlider.value, 10);
-  const font    = textoFontSelect.value;
-  const texto   = textoInput.value.trim() || "Hola";
-
+  const size = parseInt(textoSizeSlider.value, 10);
+  const font = textoFontSelect.value;
+  const texto = textoInput.value.trim() || "Hola";
   textoPreview.textContent = texto;
   textoPreview.style.fontFamily = `"${font}", cursive`;
-  textoPreview.style.fontSize   = Math.min(size, 48) + "px";
-  textoPreview.style.color      = colorActual;
+  textoPreview.style.fontSize = Math.min(size, 48) + "px";
+  textoPreview.style.color = colorActual;
 }
 
 function aplicarTexto() {
   const texto = textoInput.value.trim();
-  if (!texto || !textoPosicion) {
-    cerrarModalTexto();
-    return;
-  }
+  if (!texto || !textoPosicion) { cerrarModalTexto(); return; }
 
   const size = parseInt(textoSizeSlider.value, 10);
   const font = textoFontSelect.value;
 
   crearTextoFlotante(texto, textoPosicion.x, textoPosicion.y, size, font);
-
   cerrarModalTexto();
-  mostrarToast("✍️ Texto agregado · arrástralo para moverlo");
-
-  // 🆕 Autoguardar cuando se agrega texto
+  mostrarToast("✍️ Texto agregado");
   programarAutoguardado();
 }
 
@@ -917,7 +1211,7 @@ function crearTextoFlotante(texto, x, y, size, font) {
   div.className = "texto-flotante editable";
   div.textContent = texto;
   div.style.left = x + "px";
-  div.style.top  = y + "px";
+  div.style.top = y + "px";
   div.style.fontSize = size + "px";
   div.style.fontFamily = `"${font}", cursive`;
   div.style.color = colorActual;
@@ -942,22 +1236,16 @@ function crearTextoFlotante(texto, x, y, size, font) {
     editarTextoFlotante(div);
   });
 
-  hacerArrastrable(div, handle);
+  hacerArrastrable(div);
   hacerRedimensionable(div, handle);
 
   textLayer.appendChild(div);
 
-  setTimeout(() => {
-    if (div.classList.contains("editable")) {
-      div.classList.remove("editable");
-    }
-  }, 4000);
+  setTimeout(() => div.classList.remove("editable"), 4000);
 }
 
-function hacerArrastrable(div, handleResize) {
-  let dragging = false;
-  let offsetX = 0;
-  let offsetY = 0;
+function hacerArrastrable(div) {
+  let dragging = false, offsetX = 0, offsetY = 0;
 
   div.addEventListener("pointerdown", e => {
     if (e.target.classList.contains("texto-resize") ||
@@ -977,15 +1265,11 @@ function hacerArrastrable(div, handleResize) {
 
   div.addEventListener("pointermove", e => {
     if (!dragging) return;
-
     const wRect = wrapper.getBoundingClientRect();
-
     let newX = e.clientX - wRect.left - offsetX;
     let newY = e.clientY - wRect.top  - offsetY;
-
     newX = Math.max(0, Math.min(newX, wRect.width  - div.offsetWidth));
     newY = Math.max(0, Math.min(newY, wRect.height - div.offsetHeight));
-
     div.style.left = newX + "px";
     div.style.top  = newY + "px";
   });
@@ -1022,13 +1306,13 @@ function editarTextoFlotante(div) {
     const nuevoTexto = textoInput.value.trim();
     if (nuevoTexto) {
       div.textContent = nuevoTexto;
+
       const btnX = document.createElement("button");
       btnX.className = "texto-eliminar";
       btnX.textContent = "✕";
       btnX.addEventListener("pointerdown", e => {
         e.stopPropagation();
         div.remove();
-        mostrarToast("🗑️ Texto eliminado");
         programarAutoguardado();
       });
       div.appendChild(btnX);
@@ -1051,10 +1335,7 @@ function editarTextoFlotante(div) {
 }
 
 function hacerRedimensionable(div, handle) {
-  let resizing = false;
-  let startX = 0;
-  let startY = 0;
-  let startSize = 0;
+  let resizing = false, startX = 0, startY = 0, startSize = 0;
 
   handle.addEventListener("pointerdown", e => {
     resizing = true;
@@ -1079,17 +1360,13 @@ function hacerRedimensionable(div, handle) {
     resizing = false;
     programarAutoguardado();
   });
-  handle.addEventListener("pointercancel", () => {
-    resizing = false;
-  });
+  handle.addEventListener("pointercancel", () => resizing = false);
 }
 
 document.addEventListener("pointerdown", e => {
   const textLayer = document.getElementById("text-layer");
   if (!textLayer) return;
-
   if (e.target.closest(".texto-flotante")) return;
-
   textLayer.querySelectorAll(".texto-flotante.editable").forEach(el => {
     el.classList.remove("editable");
   });
@@ -1110,13 +1387,8 @@ textoSizeSlider?.addEventListener("input", () => {
 textoFontSelect?.addEventListener("change", actualizarPreviewTexto);
 
 textoInput?.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    aplicarTexto();
-  }
-  if (e.key === "Escape") {
-    cerrarModalTexto();
-  }
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); aplicarTexto(); }
+  if (e.key === "Escape") cerrarModalTexto();
 });
 
 /* ============================================================
@@ -1129,7 +1401,7 @@ async function initFirebaseProyecto() {
     console.log("🔐 Firebase listo");
 
     if (!PROYECTO_ID) {
-      console.warn("⚠️ No hay ?id= en la URL. Modo sin proyecto.");
+      console.warn("⚠️ No hay ?id= en la URL.");
       ajustarTamanoCanvas();
       return;
     }
@@ -1145,32 +1417,22 @@ async function initFirebaseProyecto() {
 
     proyectoFirestore = snap.data();
     console.log("📂 Proyecto cargado:", proyectoFirestore.nombre);
-    console.log("📐 Ratio del proyecto:", proyectoFirestore.ancho, "×", proyectoFirestore.alto);
 
-    // Título del header
     const h1 = document.querySelector(".header-titulo");
     if (h1) h1.textContent = "🎨 " + (proyectoFirestore.nombre || "Sin título");
 
-    // Ajustar el canvas con el ratio del proyecto
-    // Pequeño delay para que el DOM esté listo
-    setTimeout(() => {
+    setTimeout(async () => {
       ajustarTamanoCanvas();
 
-      // Cargar el dibujo guardado
-      if (proyectoFirestore.canvasData) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, W, H);
-          history.length = 0;
-          historyIndex = -1;
-          guardarHistorial();
-          console.log("🖼️ Dibujo restaurado desde Firestore");
-        };
-        img.onerror = () => {
-          console.warn("⚠️ No se pudo restaurar el dibujo");
-        };
-        img.src = proyectoFirestore.canvasData;
+      // Cargar capas si existen
+      if (Array.isArray(proyectoFirestore.capasData) && proyectoFirestore.capasData.length > 0) {
+        await cargarCapasDesdeFirestore(proyectoFirestore.capasData);
+      } else if (proyectoFirestore.canvasData) {
+        await cargarCapaUnicaDesdeFirestore(proyectoFirestore.canvasData);
       }
+
+      recomponer();
+      guardarHistorial();
     }, 300);
 
   } catch (err) {
@@ -1180,40 +1442,109 @@ async function initFirebaseProyecto() {
   }
 }
 
-initFirebaseProyecto();
+async function cargarCapasDesdeFirestore(capasData) {
+  // Limpiar capas actuales
+  capas.length = 0;
+
+  for (const cd of capasData) {
+    const capa = crearCapa(cd.nombre || "Capa");
+    capa.id = cd.id || capa.id;
+    capa.visible = cd.visible !== false;
+    capa.opacidad = typeof cd.opacidad === "number" ? cd.opacidad : 1;
+    capa.bloqueada = cd.bloqueada === true;
+
+    if (cd.data) {
+      await new Promise((res) => {
+        const img = new Image();
+        img.onload = () => {
+          ctxCapa(capa).drawImage(img, 0, 0, capa.canvas.width, capa.canvas.height);
+          res();
+        };
+        img.onerror = () => res();
+        img.src = cd.data;
+      });
+    }
+  }
+
+  if (capas.length === 0) {
+    const capa = crearCapa("Capa 1");
+    capaActivaId = capa.id;
+  } else {
+    capaActivaId = capas[0].id;
+  }
+
+  actualizarPanelCapas();
+  console.log(`📚 ${capas.length} capas cargadas`);
+}
+
+async function cargarCapaUnicaDesdeFirestore(canvasData) {
+  capas.length = 0;
+  const capa = crearCapa("Capa 1");
+  capaActivaId = capa.id;
+
+  await new Promise((res) => {
+    const img = new Image();
+    img.onload = () => {
+      ctxCapa(capa).drawImage(img, 0, 0, capa.canvas.width, capa.canvas.height);
+      res();
+    };
+    img.onerror = () => res();
+    img.src = canvasData;
+  });
+
+  actualizarPanelCapas();
+  console.log("📚 1 capa cargada (formato antiguo)");
+}
+
+/* Guardar todas las capas + composite */
+async function guardarProyectoEnFirestore(compositePNG, thumbnailJPEG) {
+  const capasData = capas.map(c => ({
+    id: c.id,
+    nombre: c.nombre,
+    visible: c.visible,
+    opacidad: c.opacidad,
+    bloqueada: c.bloqueada,
+    data: c.canvas.toDataURL("image/png")
+  }));
+
+  await setDoc(
+    doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
+    {
+      capasData,
+      canvasData: compositePNG,
+      thumbnail: thumbnailJPEG,
+      actualizadoEn: Date.now()
+    },
+    { merge: true }
+  );
+}
 
 /* ============================================================
-   AUTOGUARDADO EN FIRESTORE — Optimizado (rápido)
+   AUTOGUARDADO (rápido)
 ============================================================ */
 let timeoutAutoguardado = null;
 let guardandoAhora = false;
 let cambiosPendientes = false;
 let ultimoGuardadoTs = 0;
 
-const DELAY_AUTOGUARDADO     = 800;   // ms después del último cambio
-const DELAY_ENTRE_GUARDADOS  = 500;   // mínimo entre guardados
+const DELAY_AUTOGUARDADO    = 800;
+const DELAY_ENTRE_GUARDADOS = 500;
 
-/* Programa un guardado 800ms después del último cambio */
 function programarAutoguardado() {
   cambiosPendientes = true;
   clearTimeout(timeoutAutoguardado);
   timeoutAutoguardado = setTimeout(autoguardar, DELAY_AUTOGUARDADO);
 }
 
-/* Fuerza guardado inmediato (por ej. al salir) */
 function forzarAutoguardado() {
   cambiosPendientes = true;
   clearTimeout(timeoutAutoguardado);
   autoguardar();
 }
 
-/* Guarda el estado actual del canvas en Firestore */
 async function autoguardar() {
   if (!firebaseListo || !PROYECTO_ID) return;
-  if (guardandoAhora) {
-    programarAutoguardado();
-    return;
-  }
+  if (guardandoAhora) { programarAutoguardado(); return; }
   if (!cambiosPendientes) return;
 
   const ahora = Date.now();
@@ -1226,19 +1557,9 @@ async function autoguardar() {
   cambiosPendientes = false;
 
   try {
-    // JPEG es 5-10x más rápido que PNG
     const canvasData = canvas.toDataURL("image/jpeg", 0.9);
     const thumbnail  = generateThumbnail(canvas, 320);
-
-    await setDoc(
-      doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
-      {
-        canvasData,
-        thumbnail,
-        actualizadoEn: Date.now()
-      },
-      { merge: true }
-    );
+    await guardarProyectoEnFirestore(canvasData, thumbnail);
 
     ultimoGuardadoTs = Date.now();
     mostrarIndicadorGuardado();
@@ -1251,7 +1572,6 @@ async function autoguardar() {
   }
 }
 
-/* Indicador visual sutil (icono ☁️) */
 function mostrarIndicadorGuardado() {
   let ind = document.getElementById("indicador-guardado");
   if (!ind) {
@@ -1288,18 +1608,12 @@ function mostrarIndicadorGuardado() {
   }, 700);
 }
 
-/* ============================================================
-   GUARDAR AL SALIR DE LA PÁGINA
-============================================================ */
 window.addEventListener("beforeunload", () => {
   if (firebaseListo && PROYECTO_ID && cambiosPendientes) {
     const canvasData = canvas.toDataURL("image/jpeg", 0.9);
     const thumbnail  = generateThumbnail(canvas, 320);
-    setDoc(
-      doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
-      { canvasData, thumbnail, actualizadoEn: Date.now() },
-      { merge: true }
-    ).catch(e => console.warn("No se pudo guardar al salir:", e));
+    guardarProyectoEnFirestore(canvasData, thumbnail)
+      .catch(e => console.warn("No se pudo guardar al salir:", e));
   }
 });
 
@@ -1308,3 +1622,256 @@ document.addEventListener("visibilitychange", () => {
     forzarAutoguardado();
   }
 });
+
+/* ============================================================
+   INICIALIZAR
+============================================================ */
+initFirebaseProyecto();
+/* ============================================================
+   FASE 4 — ZOOM, PAN, DOBLE-TAP Y PANTALLA COMPLETA
+============================================================ */
+
+/* ---- Estado del zoom/pan ---- */
+let zoom  = 1;
+let panX  = 0;
+let panY  = 0;
+
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 5;
+const ZOOM_STEP = 1.15;
+
+/* Referencia a elementos */
+const estudioMain  = document.getElementById("estudio-main");
+const btnResetZoom = document.getElementById("btn-reset-zoom");
+const btnFullscreen = document.getElementById("btn-fullscreen");
+
+/* ---- Aplicar transform al wrapper ---- */
+function aplicarTransform() {
+  wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+
+  // Mostrar/ocultar botón reset
+  if (btnResetZoom) {
+    const alterado = Math.abs(zoom - 1) > 0.02 || Math.abs(panX) > 2 || Math.abs(panY) > 2;
+    btnResetZoom.classList.toggle("visible", alterado);
+  }
+}
+
+/* ---- Reset ---- */
+function resetZoom() {
+  zoom = 1;
+  panX = 0;
+  panY = 0;
+  aplicarTransform();
+  mostrarZoomIndicador();
+}
+
+/* ---- Indicador visual ---- */
+let timeoutZoomInd = null;
+function mostrarZoomIndicador() {
+  let ind = document.getElementById("zoom-indicador");
+  if (!ind) {
+    ind = document.createElement("div");
+    ind.id = "zoom-indicador";
+    ind.className = "zoom-indicador";
+    document.body.appendChild(ind);
+  }
+  ind.textContent = `${Math.round(zoom * 100)}%`;
+  ind.classList.add("visible");
+  clearTimeout(timeoutZoomInd);
+  timeoutZoomInd = setTimeout(() => ind.classList.remove("visible"), 900);
+}
+
+btnResetZoom?.addEventListener("click", resetZoom);
+
+/* ============================================================
+   GESTOS TÁCTILES (móvil) — 2 dedos para zoom/pan
+============================================================ */
+let touchMode      = null;  // null | "pan" | "pinch"
+let touchStartDist = 0;
+let touchStartZoom = 1;
+let touchStartMidX = 0;
+let touchStartMidY = 0;
+let touchStartPanX = 0;
+let touchStartPanY = 0;
+
+function distanciaTouches(t1, t2) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.hypot(dx, dy);
+}
+
+function midpointTouches(t1, t2) {
+  return {
+    x: (t1.clientX + t2.clientX) / 2,
+    y: (t1.clientY + t2.clientY) / 2
+  };
+}
+
+/* Listener en el main (por encima del canvas) */
+estudioMain.addEventListener("touchstart", (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+
+    // Cancelar cualquier trazo en curso
+    dibujando = false;
+    currentStroke = null;
+
+    touchMode = "pinch";
+    touchStartDist  = distanciaTouches(e.touches[0], e.touches[1]);
+    touchStartZoom  = zoom;
+    const mid = midpointTouches(e.touches[0], e.touches[1]);
+    touchStartMidX  = mid.x;
+    touchStartMidY  = mid.y;
+    touchStartPanX  = panX;
+    touchStartPanY  = panY;
+
+    wrapper.classList.add("gesture-active");
+    cerrarCursorBorrador();
+  }
+}, { passive: false });
+
+estudioMain.addEventListener("touchmove", (e) => {
+  if (touchMode === "pinch" && e.touches.length === 2) {
+    e.preventDefault();
+
+    const dist = distanciaTouches(e.touches[0], e.touches[1]);
+    const mid  = midpointTouches(e.touches[0], e.touches[1]);
+
+    // Zoom basado en cambio de distancia
+    const factor = dist / touchStartDist;
+    let nuevoZoom = touchStartZoom * factor;
+    nuevoZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nuevoZoom));
+
+    // Pan basado en movimiento del punto medio
+    panX = touchStartPanX + (mid.x - touchStartMidX);
+    panY = touchStartPanY + (mid.y - touchStartMidY);
+
+    zoom = nuevoZoom;
+    aplicarTransform();
+  }
+}, { passive: false });
+
+estudioMain.addEventListener("touchend", (e) => {
+  if (e.touches.length < 2 && touchMode === "pinch") {
+    touchMode = null;
+    wrapper.classList.remove("gesture-active");
+    mostrarZoomIndicador();
+  }
+}, { passive: true });
+
+estudioMain.addEventListener("touchcancel", () => {
+  touchMode = null;
+  wrapper.classList.remove("gesture-active");
+});
+
+/* ============================================================
+   DOBLE TAP para deshacer (móvil)
+============================================================ */
+let ultimoTapTiempo = 0;
+let ultimoTapX = 0;
+let ultimoTapY = 0;
+
+estudioMain.addEventListener("touchend", (e) => {
+  // Solo cuando se levanta el último dedo
+  if (e.touches.length > 0) return;
+
+  const ahora = Date.now();
+  const t = e.changedTouches[0];
+
+  const dx = Math.abs(t.clientX - ultimoTapX);
+  const dy = Math.abs(t.clientY - ultimoTapY);
+  const dt = ahora - ultimoTapTiempo;
+
+  // Doble tap: menos de 300ms y menos de 30px de distancia
+  if (dt < 300 && dx < 30 && dy < 30) {
+    e.preventDefault();
+    undo();
+    ultimoTapTiempo = 0;
+    return;
+  }
+
+  ultimoTapTiempo = ahora;
+  ultimoTapX = t.clientX;
+  ultimoTapY = t.clientY;
+}, { passive: false });
+
+/* ============================================================
+   ZOOM CON RUEDA (PC) — Ctrl + rueda
+============================================================ */
+estudioMain.addEventListener("wheel", (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+
+  const dir = e.deltaY < 0 ? 1 : -1;
+  const nuevoZoom = zoom * (dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
+  zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nuevoZoom));
+
+  aplicarTransform();
+  mostrarZoomIndicador();
+}, { passive: false });
+
+/* ============================================================
+   ATAJOS DE TECLADO — Zoom
+============================================================ */
+document.addEventListener("keydown", (e) => {
+  // Ignorar si está escribiendo en un input
+  if (e.target.matches("input, textarea")) return;
+
+  if (e.key === "+" || e.key === "=") {
+    e.preventDefault();
+    zoom = Math.min(ZOOM_MAX, zoom * ZOOM_STEP);
+    aplicarTransform();
+    mostrarZoomIndicador();
+  } else if (e.key === "-" || e.key === "_") {
+    e.preventDefault();
+    zoom = Math.max(ZOOM_MIN, zoom / ZOOM_STEP);
+    aplicarTransform();
+    mostrarZoomIndicador();
+  } else if (e.key === "0") {
+    e.preventDefault();
+    resetZoom();
+  }
+});
+
+/* ============================================================
+   PANTALLA COMPLETA
+============================================================ */
+function toggleFullscreen() {
+  const doc = document;
+  const el  = document.documentElement;
+
+  const estaEnFull =
+    doc.fullscreenElement ||
+    doc.webkitFullscreenElement ||
+    doc.mozFullScreenElement ||
+    doc.msFullscreenElement;
+
+  if (!estaEnFull) {
+    if (el.requestFullscreen)                  el.requestFullscreen();
+    else if (el.webkitRequestFullscreen)       el.webkitRequestFullscreen();
+    else if (el.mozRequestFullScreen)          el.mozRequestFullScreen();
+    else if (el.msRequestFullscreen)           el.msRequestFullscreen();
+  } else {
+    if (doc.exitFullscreen)                    doc.exitFullscreen();
+    else if (doc.webkitExitFullscreen)         doc.webkitExitFullscreen();
+    else if (doc.mozCancelFullScreen)          doc.mozCancelFullScreen();
+    else if (doc.msExitFullscreen)             doc.msExitFullscreen();
+  }
+}
+
+btnFullscreen?.addEventListener("click", toggleFullscreen);
+
+/* Escuchar cambios de fullscreen para actualizar el icono */
+document.addEventListener("fullscreenchange", () => {
+  const enFull = !!document.fullscreenElement;
+  if (btnFullscreen) {
+    btnFullscreen.setAttribute("title", enFull ? "Salir de pantalla completa" : "Pantalla completa");
+  }
+  // Recalcular tamaño del canvas al salir de fullscreen
+  setTimeout(ajustarTamanoCanvas, 300);
+});
+
+/* ============================================================
+   INICIALIZAR
+============================================================ */
+aplicarTransform();

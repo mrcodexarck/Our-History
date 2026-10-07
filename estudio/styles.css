@@ -681,3 +681,390 @@ body {
 .texto-flotante.editable .texto-resize {
   display: block;
 }
+/* ============================================================
+   PANEL DE CAPAS
+============================================================ */
+.capas-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 950;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+.capas-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.capas-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(340px, 88vw);
+  background: #1c1c1c;
+  border-left: 1px solid #2e2e2e;
+  box-shadow: -20px 0 60px rgba(0, 0, 0, .7);
+  z-index: 960;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(105%);
+  transition: transform .35s cubic-bezier(.2, .7, .3, 1);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.capas-panel.abierto {
+  transform: translateX(0);
+}
+
+/* Header del panel */
+.capas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid #2e2e2e;
+}
+.capas-header h3 {
+  font-family: "Caveat", cursive;
+  font-size: 1.4rem;
+  color: #e0b87e;
+  font-weight: 500;
+  margin: 0;
+}
+.capas-header-acciones {
+  display: flex;
+  gap: 6px;
+}
+.capas-btn-nuevo,
+.capas-btn-cerrar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, .06);
+  color: #e0b87e;
+  font-size: 1rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: background .15s, transform .15s;
+}
+.capas-btn-nuevo svg { width: 18px; height: 18px; }
+.capas-btn-nuevo:hover,
+.capas-btn-cerrar:hover {
+  background: rgba(224, 184, 126, .2);
+  transform: scale(1.08);
+}
+.capas-btn-cerrar:hover { transform: rotate(90deg); }
+
+/* Lista de capas */
+.capas-lista {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.capas-lista::-webkit-scrollbar { width: 6px; }
+.capas-lista::-webkit-scrollbar-thumb {
+  background: rgba(224, 184, 126, .3);
+  border-radius: 3px;
+}
+
+/* Cada capa */
+.capa-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #242424;
+  border: 1px solid #2e2e2e;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+}
+.capa-item:hover { background: #2a2a2a; }
+.capa-item.activa {
+  background: rgba(224, 184, 126, .12);
+  border-color: #e0b87e;
+  box-shadow: 0 0 0 1px #e0b87e inset;
+}
+
+/* Botón visibilidad */
+.capa-visibilidad {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
+}
+.capa-visibilidad:hover { background: rgba(255, 255, 255, .06); }
+.capa-visibilidad svg { width: 18px; height: 18px; }
+.capa-item.oculta .capa-visibilidad { color: #444; }
+.capa-item.oculta .capa-nombre { color: #555; text-decoration: line-through; }
+
+/* Nombre de capa */
+.capa-nombre {
+  flex: 1;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e8e8e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.capa-nombre-input {
+  flex: 1;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e8e8e8;
+  background: #1a1a1a;
+  border: 1px solid #e0b87e;
+  border-radius: 6px;
+  padding: 4px 8px;
+  outline: none;
+  min-width: 0;
+}
+
+/* Badge de capa activa */
+.capa-badge {
+  font-size: .65rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: #e0b87e;
+  padding: 2px 8px;
+  background: rgba(224, 184, 126, .15);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* Botón de opciones de capa */
+.capa-opciones {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  transition: color .15s, background .15s;
+}
+.capa-opciones:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #e0b87e;
+}
+
+/* Menú contextual de capa (mini) */
+.capa-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  padding: 6px;
+  z-index: 10;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  animation: menuPop .15s ease both;
+}
+@keyframes menuPop {
+  from { opacity: 0; transform: translateY(-4px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.capa-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #ccc;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: .95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s;
+}
+.capa-menu button:hover { background: rgba(255, 255, 255, .06); }
+.capa-menu button.danger { color: #e88a7a; }
+.capa-menu button.danger:hover { background: rgba(232, 138, 122, .12); }
+.capa-menu button svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* Slider de opacidad dentro de la capa */
+.capa-opacidad-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 4px;
+  flex-shrink: 0;
+}
+.capa-opacidad-wrap input[type="range"] {
+  width: 60px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #3a3a3a;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.capa-opacidad-wrap input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0b87e;
+  cursor: pointer;
+}
+.capa-opacidad-wrap input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0b87e;
+  border: none;
+}
+
+/* Footer */
+.capas-footer {
+  padding: 12px 18px 16px;
+  border-top: 1px solid #2e2e2e;
+}
+.capas-hint {
+  font-family: "Caveat", cursive;
+  font-size: .95rem;
+  color: rgba(224, 184, 126, .5);
+  text-align: center;
+  margin: 0;
+}
+
+/* Botón "Capas" en el header */
+#btn-capas {
+  position: relative;
+}
+#btn-capas.activo {
+  background: rgba(224, 184, 126, .15);
+  color: #e0b87e;
+}
+
+/* ============================================================
+   RESPONSIVE — Panel de capas como bottom sheet en móvil
+============================================================ */
+@media (max-width: 640px) {
+  .capas-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 72vh;
+    border-left: none;
+    border-top: 1px solid #2e2e2e;
+    border-radius: 24px 24px 0 0;
+    transform: translateY(105%);
+  }
+  .capas-panel.abierto {
+    transform: translateY(0);
+  }
+  .capas-header { padding-top: 22px; }
+  .capas-header::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 4px;
+    background: rgba(224, 184, 126, .5);
+    border-radius: 4px;
+  }
+  .capa-opacidad-wrap input[type="range"] {
+    width: 50px;
+  }
+}
+/* ============================================================
+   ZOOM Y PAN — Transformaciones del wrapper
+============================================================ */
+.canvas-wrapper {
+  transition: transform .15s ease-out;
+  touch-action: none;                 /* evita scroll/zoom del navegador */
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.canvas-wrapper.gesture-active {
+  transition: none;                    /* sin lag mientras mueves */
+  cursor: grabbing;
+}
+
+/* Cursor para indicar que se puede mover (solo PC) */
+@media (hover: hover) and (pointer: fine) {
+  .canvas-wrapper { cursor: crosshair; }
+  .canvas-wrapper.panning { cursor: grabbing; }
+}
+
+/* Indicador de zoom */
+.zoom-indicador {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  padding: 8px 16px;
+  background: rgba(20, 20, 20, .9);
+  border: 1px solid rgba(224, 184, 126, .3);
+  color: #e0b87e;
+  font-family: ui-monospace, monospace;
+  font-size: .82rem;
+  font-weight: 700;
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 900;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.zoom-indicador.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Botón reset zoom — solo visible cuando el zoom está alterado */
+#btn-reset-zoom { display: none; }
+#btn-reset-zoom.visible { display: grid; }
+
+/* Fullscreen — ajustar layout cuando está activo */
+body:fullscreen .estudio-header,
+body:-webkit-full-screen .estudio-header {
+  background: rgba(15, 15, 15, .95);
+}
+
+/* Modo pantalla completa: la barra inferior se oculta automáticamente al dibujar */
+@media (display-mode: fullscreen) {
+  .estudio-footer { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+}
