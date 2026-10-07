@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Migración Álbum</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #241c17;
+    color: #f0e2c8;
+    padding: 30px;
+    line-height: 1.6;
+  }
+  #log {
+    background: #0c0907;
+    padding: 20px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 75vh;
+    overflow-y: auto;
+    margin-top: 20px;
+  }
+  .ok { color: #6dc96d; }
+  .err { color: #e88a7a; }
+  .info { color: #d9a86c; }
+  .warn { color: #e8b07a; }
+  .head { color: #f0e2c8; font-weight: 700; }
+  button {
+    padding: 12px 24px;
+    font-size: 16px;
+    background: linear-gradient(135deg, #e0b87e, #c9985a);
+    color: #2a1d12;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button:disabled { opacity: .5; cursor: wait; }
+</style>
+</head>
+<body>
+
+<h1>Migración al Álbum v2</h1>
+<p>Detecta TODOS los documentos, incluso los "fantasma" creados por subcolecciones.</p>
+<button id="btn">Iniciar migración</button>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  collectionGroup,
+  getDocs,
+  getDoc,
+  doc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { FIREBASE_CONFIG, PAREJA_ID } from "./citas/firebase-config.js";
+
+const log = document.getElementById("log");
+const btn = document.getElementById("btn");
+
+function escribir(msg, clase = "") {
+  log.innerHTML += `<span class="${clase}">${msg}</span>\n`;
+  log.scrollTop = log.scrollHeight;
+}
+
+btn.addEventListener("click", async () => {
+  btn.disabled = true;
+  log.innerHTML = "";
+  escribir("🚀 Migración v2 iniciada\n", "head");
+  escribir(`👥 PAREJA_ID: ${PAREJA_ID}\n`, "info");
+
+  try {
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    await signInAnonymously(auth);
+    escribir("🔐 Auth OK\n", "ok");
+
+    /* ========================================================
+       PASO 1: Documentos directos (formato viejo)
+    ======================================================== */
+    escribir("📖 Buscando documentos directos en /dibujos/...", "");
+    const dibujosCol = collection(db, "parejas", PAREJA_ID, "dibujos");
+    const dibujosSnap = await getDocs(dibujosCol);
+
+    const parents = new Map(); // docId → { tieneImagen: bool, data: {} | null }
+
+    dibujosSnap.forEach(d => {
+      const data = d.data();
+      parents.set(d.id, {
+        tieneImagen: !!(data.imagen && typeof data.imagen === "string" && data.imagen.startsWith("data:image")),
+        data
+      });
+    });
+
+    escribir(`   ✅ Encontrados ${parents.size} docs directos`, "ok");
+    parents.forEach((v, id) => {
+      escribir(`      • ${id} ${v.tieneImagen ? "(con imagen)" : "(sin imagen)"}`, "");
+    });
+    escribir("", "");
+
+    /* ========================================================
+       PASO 2: Buscar TODOS los strokes con collectionGroup
+    ======================================================== */
+    escribir("🔍 Buscando subcolecciones 'strokes' en toda la BD...", "");
+    const strokesGroupSnap = await getDocs(collectionGroup(db, "strokes"));
+
+    escribir(`   ✅ Total strokes en la BD: ${strokesGroupSnap.size}`, "ok");
+
+    // Reconstruir docIds padres desde los paths
+    let phantomAgregados = 0;
+    strokesGroupSnap.forEach(s => {
+      const path = s.ref.path;
+      const partes = path.split("/");
+      // Formato: parejas/{pid}/dibujos/{docId}/strokes/{strokeId}
+      if (
+        partes.length >= 5 &&
+        partes[0] === "parejas" &&
+        partes[1] === PAREJA_ID &&
+        partes[2] === "dibujos" &&
+        partes[4] === "strokes"
+      ) {
+        const docId = partes[3];
+        if (!parents.has(docId)) {
+          parents.set(docId, { tieneImagen: false, data: null });
+          phantomAgregados++;
+        }
+      }
+    });
+
+    escribir(`   ➕ Docs fantasma detectados: ${phantomAgregados}`, phantomAgregados > 0 ? "warn" : "");
+    escribir(`   📊 Total docs a procesar: ${parents.size}\n`, "head");
+
+    /* ========================================================
+       PASO 3: Migrar cada doc
+    ======================================================== */
+    escribir("🎨 Procesando migración...\n", "");
+
+    const COLOR_FONDO = "#fdfaf3";
+    let migrados = 0;
+    let omitidos = 0;
+    let sinDatos = 0;
+
+    for (const [docId, info] of parents.entries()) {
+      // Verificar si ya existe thumbnail
+      const albumRef = doc(db, "parejas", PAREJA_ID, "album", docId);
+      const albumSnap = await getDoc(albumRef);
+      if (albumSnap.exists() && albumSnap.data().imagen) {
+        escribir(`⏭️  Ya existe: ${docId}`, "info");
+        omitidos++;
+        continue;
+      }
+
+      let dataURL = null;
+      let razon = "";
+
+      // CASO A: Tiene imagen directa (formato viejo)
+      if (info.tieneImagen) {
+        dataURL = info.data.imagen;
+        razon = "imagen antigua";
+      }
+      // CASO B: Leer strokes subcollection
+      else {
+        const strokesRef = collection(db, "parejas", PAREJA_ID, "dibujos", docId, "strokes");
+        const strokesSnap = await getDocs(strokesRef);
+
+        if (!strokesSnap.empty) {
+          const strokes = strokesSnap.docs.map(d => d.data()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+          let lastClearTs = 0;
+          strokes.forEach(s => {
+            if (s.type === "clear" && s.ts > lastClearTs) lastClearTs = s.ts;
+          });
+          const validStrokes = strokes.filter(s => s.type !== "clear" && s.ts > lastClearTs);
+
+          if (validStrokes.length > 0) {
+            const W = 900, H = 900;
+            const cv = document.createElement("canvas");
+            cv.width = W; cv.height = H;
+            const cx = cv.getContext("2d");
+            cx.fillStyle = COLOR_FONDO;
+            cx.fillRect(0, 0, W, H);
+
+            for (const s of validStrokes) {
+              if (s.type === "fill") continue;
+              const pts = s.points;
+              if (!pts || pts.length === 0) continue;
+
+              const isEraser = s.tool === "borrador";
+              const color = isEraser ? COLOR_FONDO : s.color;
+              const size = s.size || 8;
+              const alpha = s.alpha ?? 1;
+
+              cx.strokeStyle = color;
+              cx.fillStyle = color;
+              cx.lineWidth = size;
+              cx.lineCap = "round";
+              cx.lineJoin = "round";
+              cx.globalAlpha = alpha;
+
+              if (pts.length === 1) {
+                cx.beginPath();
+                cx.arc(pts[0].x, pts[0].y, size / 2, 0, Math.PI * 2);
+                cx.fill();
+              } else {
+                cx.beginPath();
+                cx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i].x, pts[i].y);
+                cx.stroke();
+              }
+              cx.globalAlpha = 1;
+            }
+
+            dataURL = cv.toDataURL("image/jpeg", 0.72);
+            razon = `${validStrokes.length} trazos`;
+          } else {
+            razon = "solo clear";
+          }
+        } else {
+          razon = "sin strokes";
+        }
+      }
+
+      if (!dataURL) {
+        escribir(`⚠️  ${docId} — ${razon}`, "warn");
+        sinDatos++;
+        continue;
+      }
+
+      // Extraer fecha y hoja
+      const partes = docId.split("-");
+      const hoja = parseInt(partes[3], 10) || 1;
+      const fecha = partes.slice(0, 3).join("-");
+
+      await setDoc(albumRef, {
+        imagen: dataURL,
+        fecha,
+        hoja,
+        autor: "migrado",
+        actualizadoEn: Date.now()
+      });
+
+      escribir(`✅ ${docId} — ${razon}`, "ok");
+      migrados++;
+    }
+
+    escribir("\n═══════════════════════════════", "head");
+    escribir(`🎉 Migración completa`, "ok");
+    escribir(`   Migrados: ${migrados}`, "ok");
+    escribir(`   Ya existían: ${omitidos}`, "info");
+    escribir(`   Sin datos: ${sinDatos}`, "warn");
+    escribir(`   Total procesados: ${parents.size}`, "head");
+    escribir("═══════════════════════════════\n", "head");
+    escribir(`👉 Ve al álbum para ver los resultados.`, "info");
+
+  } catch (err) {
+    escribir(`\n❌ Error: ${err.message}`, "err");
+    escribir(`\nStack:\n${err.stack}`, "err");
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>

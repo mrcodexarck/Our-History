@@ -348,3 +348,63 @@ body {
     padding: 14px 14px 48px;
   }
 }
+/* ============================================================
+   BOTÓN ELIMINAR EN CADA TARJETA
+============================================================ */
+.album-eliminar {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(20, 15, 12, .65);
+  border: 1px solid rgba(232, 138, 122, .5);
+  color: #e88a7a;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .2s ease, transform .2s ease, background .2s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.album-eliminar svg {
+  width: 16px;
+  height: 16px;
+}
+
+.album-card:hover .album-eliminar {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.album-eliminar:hover {
+  background: rgba(200, 80, 60, .9);
+  color: #fff;
+  border-color: rgba(255, 255, 255, .6);
+}
+
+.album-eliminar:active {
+  transform: scale(.92);
+}
+
+/* En móvil y touch, siempre visible */
+@media (hover: none), (pointer: coarse) {
+  .album-eliminar {
+    opacity: 1;
+    transform: scale(1);
+    width: 40px;
+    height: 40px;
+    top: 14px;
+    right: 14px;
+  }
+  .album-eliminar svg {
+    width: 18px;
+    height: 18px;
+  }
+}

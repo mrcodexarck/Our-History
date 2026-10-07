@@ -5,7 +5,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getFirestore,
   collection,
-  onSnapshot
+  onSnapshot,
+  doc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
@@ -92,6 +94,12 @@ function renderizar() {
         <div class="album-img">
           <img src="${item.imagen}" alt="${fechaFmt}" loading="lazy">
         </div>
+        <button type="button" class="album-eliminar" aria-label="Eliminar dibujo" title="Eliminar del álbum">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
         <div class="album-leyenda">
           <span class="album-fecha-txt">${fechaFmt}</span>
           <span class="album-hoja-badge">${labelHoja}</span>
@@ -99,7 +107,19 @@ function renderizar() {
       </div>
     `;
 
-    card.addEventListener("click", () => abrirLightbox(idx));
+    // Clic en la tarjeta → abrir lightbox
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".album-eliminar")) return; // ignorar si es el botón
+      abrirLightbox(idx);
+    });
+
+    // Clic en el botón eliminar
+    const btnEliminar = card.querySelector(".album-eliminar");
+    btnEliminar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      eliminarDelAlbum(item, btnEliminar);
+    });
+
     feed.appendChild(card);
   });
 }
@@ -199,3 +219,31 @@ async function initFirebase() {
 }
 
 initFirebase();
+/* ============================================================
+   ELIMINAR DEL ÁLBUM
+============================================================ */
+async function eliminarDelAlbum(item, btnEl) {
+  const fechaFmt = formatearFecha(item.fecha);
+  const labelHoja = item.hoja === 1 ? "Hoja 1" : "Hoja 2";
+
+  const confirmar = confirm(
+    `¿Eliminar este dibujo del álbum?\n\n` +
+    `📅 ${fechaFmt}\n` +
+    `📄 ${labelHoja}\n\n` +
+    `Se quitará del álbum. El dibujo seguirá existiendo en el módulo de dibujos.`
+  );
+  if (!confirmar) return;
+
+  btnEl.disabled = true;
+  btnEl.style.opacity = "0.5";
+
+  try {
+    await deleteDoc(doc(db, "parejas", PAREJA_ID, "album", item.id));
+    console.log(`🗑️ Eliminado del álbum: ${item.id}`);
+  } catch (err) {
+    console.error("❌ Error eliminando:", err);
+    alert("No se pudo eliminar. Intenta de nuevo.");
+    btnEl.disabled = false;
+    btnEl.style.opacity = "";
+  }
+}
