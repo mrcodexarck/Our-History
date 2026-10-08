@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuestro Estado de Ánimo - Our History</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card-bg: #2a221f;
+            --text-main: #f4ebd9;
+            --text-muted: #a3968c;
+            --gold: #d4af37;
+            --gold-hover: #e5c158;
+            --pink: #fb7185;
+            --border: #3d322e;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Georgia', serif; /* Similar a la serif de tu app */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .back-btn {
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 1.2rem;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+        .back-btn:hover { text-decoration: underline; }
+
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+            color: var(--text-main);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #2a221f 0%, #3d2e29 100%);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .summary-emojis {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            font-size: 3.5rem;
+            margin: 15px 0;
+        }
+
+        .summary-heart { font-size: 1.5rem; color: var(--pink); }
+        .summary-label { font-size: 0.9rem; color: var(--text-muted); margin-top: 5px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-header h2 { margin: 0; font-size: 1.4rem; }
+        
+        .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+        .clear-btn:hover { color: var(--pink); }
+
+        .mood-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .mood-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 5px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.2s;
+            color: var(--text-muted);
+        }
+
+        .mood-btn:hover {
+            background-color: rgba(212, 175, 55, 0.1);
+            border-color: var(--gold);
+        }
+
+        .mood-btn.active {
+            background-color: rgba(212, 175, 55, 0.2);
+            border-color: var(--gold);
+            color: var(--text-main);
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .mood-emoji { font-size: 1.8rem; margin-bottom: 5px; }
+        .mood-name { font-size: 0.75rem; font-family: sans-serif; text-align: center; }
+
+        textarea {
+            width: 100%;
+            background-color: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-main);
+            padding: 10px;
+            margin-top: 15px;
+            resize: none;
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            box-sizing: border-box;
+            display: none; /* Se muestra cuando hay un estado seleccionado */
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .note-display {
+            margin-top: 15px;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-style: italic;
+            border-left: 2px solid var(--gold);
+            padding-left: 10px;
+            display: none;
+        }
+
+        .note-display strong { color: var(--gold); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="menu.html" class="back-btn">← Volver al menú</a>
+    
+    <h1>Nuestro Estado de Ánimo</h1>
+    <p class="subtitle">¿Cómo nos sentimos hoy, [fecha]?</p>
+
+    <!-- Resumen de la pareja -->
+    <div class="summary-card" id="summaryCard" style="display: none;">
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Así estamos hoy</p>
+        <div class="summary-emojis">
+            <div>
+                <div id="summaryYoEmoji">❔</div>
+                <div class="summary-label">Tú</div>
+            </div>
+            <div class="summary-heart">💞</div>
+            <div>
+                <div id="summaryParejaEmoji">❔</div>
+                <div class="summary-label">Pareja</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Yo -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Tú</h2>
+                <button class="clear-btn" onclick="clearMood('yo')">Limpiar</button>
+            </div>
+            <div class="mood-grid" id="grid-yo"></div>
+            <textarea id="note-yo" placeholder="¿Quieres contarle algo? (opcional)" rows="2"></textarea>
+            <div class="note-display" id="note-display-yo"></div>
+        </div>
+
+        <!-- Pareja -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Mi Pareja</h2>
+                <button class="clear-btn" onclick="clearMood('pareja')">Limpiar</button>
+            </div>
+            <div class="mood-grid" id="grid-pareja"></div>
+            <textarea id="note-pareja" placeholder="¿Quieres contarle algo? (opcional)" rows="2"></textarea>
+            <div class="note-display" id="note-display-pareja"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Catálogo de estados de ánimo (puedes agregar más)
+    const MOODS = [
+        { id: 'feliz', label: 'Feliz', emoji: '😄' },
+        { id: 'enamorado', label: 'Enamorado', emoji: '🥰' },
+        { id: 'tranquilo', label: 'Tranquilo', emoji: '😌' },
+        { id: 'cansado', label: 'Cansado', emoji: '😴' },
+        { id: 'triste', label: 'Triste', emoji: '😢' },
+        { id: 'enojado', label: 'Enojado', emoji: '😠' },
+        { id: 'ansioso', label: 'Ansioso', emoji: '😰' },
+        { id: 'agradecido', label: 'Agradecido', emoji: '🙏' }
+    ];
+
+    const STORAGE_KEY = 'our-history-mood';
+    const today = new Date().toISOString().slice(0, 10);
+
+    // 2. Función para obtener el estado del día
+    function getState() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { date: today, entries: {} };
+        try {
+            const parsed = JSON.parse(raw);
+            // Si es de otro día, reiniciamos
+            return parsed.date === today ? parsed : { date: today, entries: {} };
+        } catch {
+            return { date: today, entries: {} };
+        }
+    }
+
+    // 3. Función para guardar el estado
+    function saveState(state) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // 4. Renderizar la interfaz
+    function render() {
+        const state = getState();
+        const persons = ['yo', 'pareja'];
+
+        persons.forEach(person => {
+            const grid = document.getElementById(`grid-${person}`);
+            const noteTextarea = document.getElementById(`note-${person}`);
+            const noteDisplay = document.getElementById(`note-display-${person}`);
+            
+            // Renderizar botones
+            grid.innerHTML = MOODS.map(m => {
+                const isActive = state.entries[person]?.moodId === m.id;
+                return `
+                    <button class="mood-btn ${isActive ? 'active' : ''}" onclick="selectMood('${person}', '${m.id}')">
+                        <span class="mood-emoji">${m.emoji}</span>
+                        <span class="mood-name">${m.label}</span>
+                    </button>
+                `;
+            }).join('');
+
+            // Mostrar/ocultar textarea y nota
+            const entry = state.entries[person];
+            if (entry?.moodId) {
+                noteTextarea.style.display = 'block';
+                noteTextarea.value = entry.note || '';
+                
+                if (entry.note) {
+                    noteDisplay.style.display = 'block';
+                    noteDisplay.innerHTML = `<strong>${person === 'yo' ? 'Tú' : 'Pareja'}:</strong> ${entry.note}`;
+                } else {
+                    noteDisplay.style.display = 'none';
+                }
+            } else {
+                noteTextarea.style.display = 'none';
+                noteDisplay.style.display = 'none';
+            }
+        });
+
+        // Actualizar resumen
+        const summaryCard = document.getElementById('summaryCard');
+        const summaryYo = document.getElementById('summaryYoEmoji');
+        const summaryPareja = document.getElementById('summaryParejaEmoji');
+
+        const yoMood = MOODS.find(m => m.id === state.entries.yo?.moodId);
+        const parejaMood = MOODS.find(m => m.id === state.entries.pareja?.moodId);
+
+        if (yoMood || parejaMood) {
+            summaryCard.style.display = 'block';
+            summaryYo.textContent = yoMood ? yoMood.emoji : '❔';
+            summaryPareja.textContent = parejaMood ? parejaMood.emoji : '❔';
+        } else {
+            summaryCard.style.display = 'none';
+        }
+    }
+
+    // 5. Seleccionar un estado de ánimo
+    function selectMood(person, moodId) {
+        const state = getState();
+        if (!state.entries[person]) state.entries[person] = {};
+        
+        // Si ya estaba seleccionado, lo quitamos (toggle)
+        if (state.entries[person].moodId === moodId) {
+            delete state.entries[person].moodId;
+        } else {
+            state.entries[person].moodId = moodId;
+        }
+        
+        saveState(state);
+        render();
+    }
+
+    // 6. Limpiar el estado de una persona
+    function clearMood(person) {
+        const state = getState();
+        delete state.entries[person];
+        saveState(state);
+        render();
+    }
+
+    // 7. Escuchar cambios en las notas
+    document.getElementById('note-yo').addEventListener('input', (e) => {
+        const state = getState();
+        if (state.entries.yo?.moodId) {
+            state.entries.yo.note = e.target.value;
+            saveState(state);
+            render(); // Re-render para actualizar la nota visible
+        }
+    });
+
+    document.getElementById('note-pareja').addEventListener('input', (e) => {
+        const state = getState();
+        if (state.entries.pareja?.moodId) {
+            state.entries.pareja.note = e.target.value;
+            saveState(state);
+            render();
+        }
+    });
+
+    // Inicializar
+    // Reemplazar [fecha] por la fecha actual en español
+    const fechaActual = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.querySelector('.subtitle').textContent = `¿Cómo nos sentimos hoy, ${fechaActual}?`;
+    
+    render();
+</script>
+
+</body>
+</html>
