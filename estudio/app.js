@@ -6,7 +6,13 @@ import {
   getFirestore,
   doc,
   getDoc,
-  setDoc
+  setDoc,
+  collection,
+  addDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
@@ -66,21 +72,9 @@ let firebaseListo = false;
 /* ============================================================
    SISTEMA DE CAPAS
 ============================================================ */
-/**
- * Estructura de cada capa:
- *   {
- *     id: string único,
- *     nombre: string,
- *     visible: boolean,
- *     bloqueada: boolean,
- *     opacidad: number (0-1),
- *     canvas: HTMLCanvasElement offscreen del tamaño W×H
- *   }
- */
 let capas = [];
 let capaActivaId = null;
 
-/* Crear una nueva capa con canvas offscreen del tamaño actual */
 function crearCapa(nombre, insertIndex = null) {
   const cv = document.createElement("canvas");
   cv.width  = W;
@@ -103,23 +97,19 @@ function crearCapa(nombre, insertIndex = null) {
   return capa;
 }
 
-/* Obtener la capa activa actual */
 function capaActiva() {
   return capas.find(c => c.id === capaActivaId) || capas[capas.length - 1];
 }
 
-/* Obtener el contexto 2D de una capa (por defecto la activa) */
 function ctxCapa(capa = capaActiva()) {
   return capa.canvas.getContext("2d", { willReadFrequently: true });
 }
 
-/* Cambiar la capa activa */
 function setCapaActiva(id) {
   capaActivaId = id;
   actualizarPanelCapas();
 }
 
-/* Recomponer: dibujar todas las capas visibles sobre el canvas principal */
 function recomponer() {
   ctx.globalAlpha = 1;
   ctx.fillStyle = COLOR_FONDO;
@@ -133,7 +123,6 @@ function recomponer() {
   ctx.globalAlpha = 1;
 }
 
-/* Redimensionar todos los canvases de las capas (al cambiar tamaño) */
 function redimensionarCapas(nuevoW, nuevoH) {
   const copias = capas.map(c => {
     const tmp = document.createElement("canvas");
@@ -146,7 +135,6 @@ function redimensionarCapas(nuevoW, nuevoH) {
   capas.forEach((capa, i) => {
     capa.canvas.width  = nuevoW;
     capa.canvas.height = nuevoH;
-    // Redibujar lo que había, escalado
     const ctx2 = capa.canvas.getContext("2d");
     ctx2.drawImage(copias[i].snapshot, 0, 0, nuevoW, nuevoH);
   });
@@ -224,7 +212,7 @@ sliderOpacity.addEventListener("input", () => {
 });
 
 /* ============================================================
-   HISTORIAL (guarda el estado COMPUESTO)
+   HISTORIAL
 ============================================================ */
 function guardarHistorial() {
   history.splice(historyIndex + 1);
@@ -306,19 +294,14 @@ const HERRAMIENTAS_FORMAS = ["line", "rect", "circle"];
 function iniciarTrazo(e) {
   const capa = capaActiva();
   if (!capa) return;
-  if (capa.bloqueada) {
-    mostrarToast("🔒 Capa bloqueada");
-    return;
-  }
-  if (!capa.visible) {
-    mostrarToast("👁️ Capa oculta");
-    return;
-  }
+  if (capa.bloqueada) { mostrarToast("🔒 Capa bloqueada"); return; }
+  if (!capa.visible)  { mostrarToast("👁️ Capa oculta");    return; }
 
   const p = getPos(e);
-  dibujando    = true;
-  startPoint   = p;
-  lastPoint    = p;
+  dibujando  = true;
+  startPoint = p;
+  lastPoint  = p;
+  puntosTrazoActual = [p];
 
   snapshotAntes = ctx.getImageData(0, 0, W, H);
 
@@ -327,14 +310,15 @@ function iniciarTrazo(e) {
     aplicarEstilo(lCtx, herramienta === "eraser");
     lCtx.globalAlpha *= capa.opacidad;
     lCtx.beginPath();
-
-    if (herramienta === "spray") {
-      sprayAt(lCtx, p.x, p.y, tamano);
-    } else {
-      lCtx.arc(p.x, p.y, lCtx.lineWidth / 2, 0, Math.PI * 2);
-      lCtx.fill();
-    }
+    if (herramienta === "spray") sprayAt(lCtx, p.x, p.y, tamano);
+    else { lCtx.arc(p.x, p.y, lCtx.lineWidth / 2, 0, Math.PI * 2); lCtx.fill(); }
     lCtx.globalAlpha = 1;
+
+    emitirPresencia({
+      tipo: "trazo", capaId: capa.id,
+      herramienta, color: colorActual, tamano, opacidad,
+      puntos: puntosTrazoActual
+    });
 
   } else if (herramienta === "text") {
     textoPosicion = p;
@@ -343,6 +327,7 @@ function iniciarTrazo(e) {
 
   } else if (herramienta === "fill") {
     floodFill(p.x, p.y, colorActual);
+    emitirEvento({ tipo: "relleno", capaId: capa.id, x: p.x, y: p.y, color: colorActual });
     dibujando = false;
   }
 }
@@ -370,11 +355,9 @@ function moverTrazo(e) {
     }
     lCtx.globalAlpha = 1;
 
-    // Vista previa en el composite (solo si la capa es visible)
     if (capa.visible) {
       aplicarEstilo(ctx, esBorrador);
       ctx.globalAlpha *= capa.opacidad;
-
       if (herramienta === "spray") {
         sprayAt(ctx, p.x, p.y, tamano);
       } else {
@@ -387,9 +370,21 @@ function moverTrazo(e) {
     }
 
     lastPoint = p;
+    puntosTrazoActual.push(p);
+
+    emitirPresencia({
+      tipo: "trazo", capaId: capa.id,
+      herramienta, color: colorActual, tamano, opacidad,
+      puntos: puntosTrazoActual
+    });
 
   } else if (HERRAMIENTAS_FORMAS.includes(herramienta)) {
     dibujarPreviewForma(startPoint, p);
+    emitirPresencia({
+      tipo: "forma", capaId: capa.id,
+      herramienta, color: colorActual, tamano, opacidad,
+      inicio: startPoint, fin: p
+    });
   }
 }
 
@@ -397,23 +392,35 @@ function finalizarTrazo(e) {
   if (!dibujando) return;
   dibujando = false;
 
-  if (HERRAMIENTAS_FORMAS.includes(herramienta) && startPoint) {
+  const capa = capaActiva();
+
+  if (HERRAMIENTAS_FORMAS.includes(herramienta) && startPoint && capa) {
     const p = e ? getPos(e) : startPoint;
-    const capa = capaActiva();
-    if (capa) {
-      const lCtx = ctxCapa(capa);
-      dibujarFormaFinalEn(lCtx, startPoint, p, capa);
-    }
+    dibujarFormaFinalEn(ctxCapa(capa), startPoint, p, capa);
     limpiarPreview();
+
+    emitirEvento({
+      tipo: "forma", capaId: capa.id,
+      herramienta, color: colorActual, tamano, opacidad,
+      inicio: startPoint, fin: p
+    });
+
+  } else if (HERRAMIENTAS_LIBRES.includes(herramienta) && capa && puntosTrazoActual.length) {
+    emitirEvento({
+      tipo: "trazo", capaId: capa.id,
+      herramienta, color: colorActual, tamano, opacidad,
+      puntos: puntosTrazoActual
+    });
   }
 
+  puntosTrazoActual = [];
+  limpiarPresencia();
+
   if (snapshotAntes) {
-    // Recomponer antes de guardar para capturar el estado final
     recomponer();
     guardarHistorial();
     snapshotAntes = null;
   }
-
   startPoint = null;
   lastPoint  = null;
 
@@ -482,7 +489,6 @@ function dibujarFormaFinalEn(targetCtx, a, b, capa) {
   targetCtx.stroke();
   targetCtx.restore();
 
-  // Recomponer para reflejar cambios
   recomponer();
 }
 
@@ -491,7 +497,7 @@ function limpiarPreview() {
 }
 
 /* ============================================================
-   FLOOD FILL (opera sobre la capa activa)
+   FLOOD FILL
 ============================================================ */
 function floodFill(startX, startY, fillColorHex) {
   const capa = capaActiva();
@@ -660,6 +666,7 @@ document.getElementById("btn-save").addEventListener("click", async () => {
   }
 
   const fullPNG   = tempCanvas.toDataURL("image/png");
+  const cloudJPEG = tempCanvas.toDataURL("image/jpeg", 0.8);
   const thumbJPEG = generateThumbnail(tempCanvas, 400);
 
   const link = document.createElement("a");
@@ -669,7 +676,7 @@ document.getElementById("btn-save").addEventListener("click", async () => {
 
   if (firebaseListo && PROYECTO_ID) {
     try {
-      await guardarProyectoEnFirestore(fullPNG, thumbJPEG);
+      await guardarProyectoEnFirestore(cloudJPEG, thumbJPEG);
       mostrarToast("💾 Guardado en la nube ✅");
     } catch (err) {
       console.error("❌ Error guardando:", err);
@@ -714,6 +721,7 @@ document.getElementById("btn-clear").addEventListener("click", () => {
   guardarHistorial();
   mostrarToast("🗑️ Capa limpiada");
   programarAutoguardado();
+  emitirEvento({ tipo: "limpiar", capaId: capa.id });
 });
 
 /* ============================================================
@@ -815,7 +823,7 @@ window.addEventListener("resize", () => {
 });
 
 /* ============================================================
-   AJUSTAR CANVAS AL TAMAÑO DISPONIBLE (respetando ratio)
+   AJUSTAR CANVAS AL TAMAÑO DISPONIBLE
 ============================================================ */
 function ajustarTamanoCanvas() {
   const container = wrapper.parentElement;
@@ -849,28 +857,22 @@ function ajustarTamanoCanvas() {
 
   if (canvas.width === nuevoW && canvas.height === nuevoH) return;
 
-  // Guardar estado compuesto
   let imgActual = null;
   if (canvas.width > 0 && canvas.height > 0) {
     try { imgActual = ctx.getImageData(0, 0, canvas.width, canvas.height); }
     catch (e) { imgActual = null; }
   }
 
-  // Redimensionar canvas principal y preview
   canvas.width  = nuevoW;
   canvas.height = nuevoH;
   previewCanvas.width  = nuevoW;
   previewCanvas.height = nuevoH;
 
-  const oldW = W;
-  const oldH = H;
   W = nuevoW;
   H = nuevoH;
 
-  // Redimensionar todas las capas proporcionalmente
   redimensionarCapas(nuevoW, nuevoH);
 
-  // Si no hay capas, la creamos
   if (capas.length === 0) {
     const capa = crearCapa("Capa 1");
     capaActivaId = capa.id;
@@ -898,7 +900,6 @@ function pintarFondoInicial() {
   ctx.fillRect(0, 0, W, H);
 }
 
-// Crear capa inicial
 if (capas.length === 0) {
   const capa = crearCapa("Capa 1");
   capaActivaId = capa.id;
@@ -950,6 +951,7 @@ btnNuevaCapa.addEventListener("click", () => {
   actualizarPanelCapas();
   mostrarToast("➕ Capa creada");
   programarAutoguardado();
+  emitirEvento({ tipo: "capa-nueva", capaIdNueva: capa.id, nombre: capa.nombre });
 });
 
 /* Iconos para el menú de capa */
@@ -963,7 +965,6 @@ const ICONO_BORRAR       = `<svg viewBox="0 0 24 24" fill="none" stroke="current
 function actualizarPanelCapas() {
   capasLista.innerHTML = "";
 
-  // Iteramos en orden inverso (arriba = última en la lista)
   for (let i = capas.length - 1; i >= 0; i--) {
     const capa = capas[i];
     const activa = capa.id === capaActivaId;
@@ -988,7 +989,6 @@ function actualizarPanelCapas() {
       <button type="button" class="capa-opciones" aria-label="Opciones">⋯</button>
     `;
 
-    // Clic en la capa → activarla
     item.addEventListener("click", (e) => {
       if (e.target.closest(".capa-visibilidad") ||
           e.target.closest(".capa-opciones")   ||
@@ -997,16 +997,15 @@ function actualizarPanelCapas() {
       setCapaActiva(capa.id);
     });
 
-    // Visibilidad
     item.querySelector(".capa-visibilidad").addEventListener("click", (e) => {
       e.stopPropagation();
       capa.visible = !capa.visible;
       recomponer();
       actualizarPanelCapas();
       programarAutoguardado();
+      emitirEvento({ tipo: "capa-visibilidad", capaId: capa.id, visible: capa.visible });
     });
 
-    // Opacidad
     const slider = item.querySelector(".capa-opacidad-wrap input");
     slider.addEventListener("input", (e) => {
       e.stopPropagation();
@@ -1015,10 +1014,10 @@ function actualizarPanelCapas() {
     });
     slider.addEventListener("change", () => {
       programarAutoguardado();
+      emitirEvento({ tipo: "capa-opacidad", capaId: capa.id, opacidad: capa.opacidad });
     });
     slider.addEventListener("pointerdown", (e) => e.stopPropagation());
 
-    // Menú de opciones
     item.querySelector(".capa-opciones").addEventListener("click", (e) => {
       e.stopPropagation();
       abrirMenuCapa(capa, item);
@@ -1029,7 +1028,6 @@ function actualizarPanelCapas() {
 }
 
 function abrirMenuCapa(capa, itemEl) {
-  // Cerrar cualquier menú abierto
   document.querySelectorAll(".capa-menu").forEach(m => m.remove());
 
   const menu = document.createElement("div");
@@ -1057,7 +1055,6 @@ function abrirMenuCapa(capa, itemEl) {
 
   itemEl.appendChild(menu);
 
-  // Cerrar al hacer clic fuera
   setTimeout(() => {
     const cerrar = (ev) => {
       if (!menu.contains(ev.target)) {
@@ -1068,7 +1065,6 @@ function abrirMenuCapa(capa, itemEl) {
     document.addEventListener("pointerdown", cerrar);
   }, 10);
 
-  // Acciones
   menu.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
       const accion = btn.dataset.accion;
@@ -1104,6 +1100,7 @@ function renombrarCapa(capa, itemEl) {
     capa.nombre = nuevo;
     actualizarPanelCapas();
     programarAutoguardado();
+    emitirEvento({ tipo: "capa-renombrar", capaId: capa.id, nombre: nuevo });
   };
 
   input.addEventListener("blur", confirmar);
@@ -1134,6 +1131,8 @@ function eliminarCapa(capa) {
 
   const ok = confirm(`¿Eliminar "${capa.nombre}"?`);
   if (!ok) return;
+
+  emitirEvento({ tipo: "capa-eliminar", capaId: capa.id });
 
   const idx = capas.indexOf(capa);
   capas.splice(idx, 1);
@@ -1424,7 +1423,6 @@ async function initFirebaseProyecto() {
     setTimeout(async () => {
       ajustarTamanoCanvas();
 
-      // Cargar capas si existen
       if (Array.isArray(proyectoFirestore.capasData) && proyectoFirestore.capasData.length > 0) {
         await cargarCapasDesdeFirestore(proyectoFirestore.capasData);
       } else if (proyectoFirestore.canvasData) {
@@ -1433,6 +1431,9 @@ async function initFirebaseProyecto() {
 
       recomponer();
       guardarHistorial();
+
+      // ✨ Arranca la sincronización colaborativa en tiempo real
+      iniciarSyncColaborativa();
     }, 300);
 
   } catch (err) {
@@ -1443,7 +1444,6 @@ async function initFirebaseProyecto() {
 }
 
 async function cargarCapasDesdeFirestore(capasData) {
-  // Limpiar capas actuales
   capas.length = 0;
 
   for (const cd of capasData) {
@@ -1496,22 +1496,12 @@ async function cargarCapaUnicaDesdeFirestore(canvasData) {
   console.log("📚 1 capa cargada (formato antiguo)");
 }
 
-/* Guardar todas las capas + composite */
-async function guardarProyectoEnFirestore(compositePNG, thumbnailJPEG) {
-  const capasData = capas.map(c => ({
-    id: c.id,
-    nombre: c.nombre,
-    visible: c.visible,
-    opacidad: c.opacidad,
-    bloqueada: c.bloqueada,
-    data: c.canvas.toDataURL("image/png")
-  }));
-
+/* Guardar solo composite + thumbnail (mucho más ligero) */
+async function guardarProyectoEnFirestore(compositeJPEG, thumbnailJPEG) {
   await setDoc(
     doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
     {
-      capasData,
-      canvasData: compositePNG,
+      canvasData: compositeJPEG,
       thumbnail: thumbnailJPEG,
       actualizadoEn: Date.now()
     },
@@ -1520,15 +1510,15 @@ async function guardarProyectoEnFirestore(compositePNG, thumbnailJPEG) {
 }
 
 /* ============================================================
-   AUTOGUARDADO (rápido)
+   AUTOGUARDADO
 ============================================================ */
 let timeoutAutoguardado = null;
 let guardandoAhora = false;
 let cambiosPendientes = false;
 let ultimoGuardadoTs = 0;
 
-const DELAY_AUTOGUARDADO    = 800;
-const DELAY_ENTRE_GUARDADOS = 500;
+const DELAY_AUTOGUARDADO    = 2500;
+const DELAY_ENTRE_GUARDADOS = 1500;
 
 function programarAutoguardado() {
   cambiosPendientes = true;
@@ -1557,15 +1547,13 @@ async function autoguardar() {
   cambiosPendientes = false;
 
   try {
-    const canvasData = canvas.toDataURL("image/jpeg", 0.9);
+    const canvasData = canvas.toDataURL("image/jpeg", 0.75);
     const thumbnail  = generateThumbnail(canvas, 320);
     await guardarProyectoEnFirestore(canvasData, thumbnail);
-
     ultimoGuardadoTs = Date.now();
     mostrarIndicadorGuardado();
-    console.log("☁️ Autoguardado");
   } catch (err) {
-    console.error("❌ Error autoguardando:", err);
+    console.error("❌ Autoguardando:", err);
   } finally {
     guardandoAhora = false;
     if (cambiosPendientes) programarAutoguardado();
@@ -1609,8 +1597,13 @@ function mostrarIndicadorGuardado() {
 }
 
 window.addEventListener("beforeunload", () => {
+  // ✨ Limpiar presencia y listeners
+  limpiarPresencia();
+  unsubEventos?.();
+  unsubPresencia?.();
+
   if (firebaseListo && PROYECTO_ID && cambiosPendientes) {
-    const canvasData = canvas.toDataURL("image/jpeg", 0.9);
+    const canvasData = canvas.toDataURL("image/jpeg", 0.8);
     const thumbnail  = generateThumbnail(canvas, 320);
     guardarProyectoEnFirestore(canvasData, thumbnail)
       .catch(e => console.warn("No se pudo guardar al salir:", e));
@@ -1627,11 +1620,11 @@ document.addEventListener("visibilitychange", () => {
    INICIALIZAR
 ============================================================ */
 initFirebaseProyecto();
+
 /* ============================================================
    FASE 4 — ZOOM, PAN, DOBLE-TAP Y PANTALLA COMPLETA
 ============================================================ */
 
-/* ---- Estado del zoom/pan ---- */
 let zoom  = 1;
 let panX  = 0;
 let panY  = 0;
@@ -1640,23 +1633,19 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 1.15;
 
-/* Referencia a elementos */
 const estudioMain  = document.getElementById("estudio-main");
 const btnResetZoom = document.getElementById("btn-reset-zoom");
 const btnFullscreen = document.getElementById("btn-fullscreen");
 
-/* ---- Aplicar transform al wrapper ---- */
 function aplicarTransform() {
   wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
 
-  // Mostrar/ocultar botón reset
   if (btnResetZoom) {
     const alterado = Math.abs(zoom - 1) > 0.02 || Math.abs(panX) > 2 || Math.abs(panY) > 2;
     btnResetZoom.classList.toggle("visible", alterado);
   }
 }
 
-/* ---- Reset ---- */
 function resetZoom() {
   zoom = 1;
   panX = 0;
@@ -1665,7 +1654,6 @@ function resetZoom() {
   mostrarZoomIndicador();
 }
 
-/* ---- Indicador visual ---- */
 let timeoutZoomInd = null;
 function mostrarZoomIndicador() {
   let ind = document.getElementById("zoom-indicador");
@@ -1686,7 +1674,7 @@ btnResetZoom?.addEventListener("click", resetZoom);
 /* ============================================================
    GESTOS TÁCTILES (móvil) — 2 dedos para zoom/pan
 ============================================================ */
-let touchMode      = null;  // null | "pan" | "pinch"
+let touchMode      = null;
 let touchStartDist = 0;
 let touchStartZoom = 1;
 let touchStartMidX = 0;
@@ -1707,14 +1695,14 @@ function midpointTouches(t1, t2) {
   };
 }
 
-/* Listener en el main (por encima del canvas) */
 estudioMain.addEventListener("touchstart", (e) => {
   if (e.touches.length === 2) {
     e.preventDefault();
 
     // Cancelar cualquier trazo en curso
     dibujando = false;
-    currentStroke = null;
+    startPoint = null;
+    lastPoint  = null;
 
     touchMode = "pinch";
     touchStartDist  = distanciaTouches(e.touches[0], e.touches[1]);
@@ -1726,7 +1714,7 @@ estudioMain.addEventListener("touchstart", (e) => {
     touchStartPanY  = panY;
 
     wrapper.classList.add("gesture-active");
-    cerrarCursorBorrador();
+    ocultarCursorBorrador();
   }
 }, { passive: false });
 
@@ -1737,12 +1725,10 @@ estudioMain.addEventListener("touchmove", (e) => {
     const dist = distanciaTouches(e.touches[0], e.touches[1]);
     const mid  = midpointTouches(e.touches[0], e.touches[1]);
 
-    // Zoom basado en cambio de distancia
     const factor = dist / touchStartDist;
     let nuevoZoom = touchStartZoom * factor;
     nuevoZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nuevoZoom));
 
-    // Pan basado en movimiento del punto medio
     panX = touchStartPanX + (mid.x - touchStartMidX);
     panY = touchStartPanY + (mid.y - touchStartMidY);
 
@@ -1772,7 +1758,6 @@ let ultimoTapX = 0;
 let ultimoTapY = 0;
 
 estudioMain.addEventListener("touchend", (e) => {
-  // Solo cuando se levanta el último dedo
   if (e.touches.length > 0) return;
 
   const ahora = Date.now();
@@ -1782,7 +1767,6 @@ estudioMain.addEventListener("touchend", (e) => {
   const dy = Math.abs(t.clientY - ultimoTapY);
   const dt = ahora - ultimoTapTiempo;
 
-  // Doble tap: menos de 300ms y menos de 30px de distancia
   if (dt < 300 && dx < 30 && dy < 30) {
     e.preventDefault();
     undo();
@@ -1814,7 +1798,6 @@ estudioMain.addEventListener("wheel", (e) => {
    ATAJOS DE TECLADO — Zoom
 ============================================================ */
 document.addEventListener("keydown", (e) => {
-  // Ignorar si está escribiendo en un input
   if (e.target.matches("input, textarea")) return;
 
   if (e.key === "+" || e.key === "=") {
@@ -1861,13 +1844,11 @@ function toggleFullscreen() {
 
 btnFullscreen?.addEventListener("click", toggleFullscreen);
 
-/* Escuchar cambios de fullscreen para actualizar el icono */
 document.addEventListener("fullscreenchange", () => {
   const enFull = !!document.fullscreenElement;
   if (btnFullscreen) {
     btnFullscreen.setAttribute("title", enFull ? "Salir de pantalla completa" : "Pantalla completa");
   }
-  // Recalcular tamaño del canvas al salir de fullscreen
   setTimeout(ajustarTamanoCanvas, 300);
 });
 
@@ -1875,3 +1856,217 @@ document.addEventListener("fullscreenchange", () => {
    INICIALIZAR
 ============================================================ */
 aplicarTransform();
+
+/* ============================================================
+   COLABORACIÓN EN TIEMPO REAL
+============================================================ */
+
+const MI_AUTOR = (() => {
+  let id = localStorage.getItem("estudio-autor-id");
+  if (!id) {
+    id = "u" + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem("estudio-autor-id", id);
+  }
+  return id;
+})();
+
+const eventosProcesados = new Set();
+let unsubEventos   = null;
+let unsubPresencia = null;
+let presenciaRemota = null;
+
+let puntosTrazoActual = [];
+let ultimoEnvioPresencia = 0;
+const PRESENCIA_INTERVALO = 120;
+
+const refEventos = () =>
+  collection(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID, "eventos");
+
+const refPresencia = () =>
+  doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID, "presencia", MI_AUTOR);
+
+/* ---------- 1. Arranque de listeners ---------- */
+async function iniciarSyncColaborativa() {
+  if (!PROYECTO_ID) return;
+
+  const qEv = query(refEventos(), orderBy("ts", "asc"));
+  unsubEventos = onSnapshot(qEv, snap => {
+    snap.docChanges().forEach(ch => {
+      if (ch.type !== "added") return;
+      if (eventosProcesados.has(ch.doc.id)) return;
+      eventosProcesados.add(ch.doc.id);
+      const ev = ch.doc.data();
+      if (ev.autor === MI_AUTOR) return;
+      aplicarEventoRemoto(ev);
+    });
+  }, err => console.warn("Sync eventos:", err));
+
+  const qPr = query(
+    collection(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID, "presencia")
+  );
+  unsubPresencia = onSnapshot(qPr, snap => {
+    let encontrado = null;
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.autor === MI_AUTOR) return;
+      if (Date.now() - (data.ts || 0) > 5000) return;
+      encontrado = data;
+    });
+    presenciaRemota = encontrado;
+    dibujarPresenciaRemota();
+  }, err => console.warn("Sync presencia:", err));
+}
+
+/* ---------- 2. Emitir eventos ---------- */
+async function emitirEvento(datos) {
+  if (!firebaseListo || !PROYECTO_ID) return;
+  try {
+    await addDoc(refEventos(), { ...datos, autor: MI_AUTOR, ts: Date.now() });
+  } catch (e) {
+    console.warn("emitirEvento:", e);
+  }
+}
+
+async function emitirPresencia(datos) {
+  if (!firebaseListo || !PROYECTO_ID) return;
+  const ahora = performance.now();
+  if (ahora - ultimoEnvioPresencia < PRESENCIA_INTERVALO) return;
+  ultimoEnvioPresencia = ahora;
+  try {
+    await setDoc(refPresencia(), { ...datos, autor: MI_AUTOR, ts: Date.now() });
+  } catch (e) { /* silencioso */ }
+}
+
+async function limpiarPresencia() {
+  if (!firebaseListo || !PROYECTO_ID) return;
+  try { await deleteDoc(refPresencia()); } catch (e) {}
+}
+
+/* ---------- 3. Aplicar eventos remotos ---------- */
+function aplicarEventoRemoto(ev) {
+  const capa = capas.find(c => c.id === ev.capaId) || capaActiva();
+  if (!capa) return;
+
+  const lCtx = ctxCapa(capa);
+  const visibilidadOriginal = capa.visible;
+  capa.visible = true;
+
+  try {
+    if (ev.tipo === "trazo") {
+      aplicarTrazoRemoto(lCtx, ev, capa);
+    } else if (ev.tipo === "forma") {
+      aplicarFormaRemota(lCtx, ev, capa);
+    } else if (ev.tipo === "relleno") {
+      const antes = capaActivaId;
+      capaActivaId = capa.id;
+      floodFill(ev.x, ev.y, ev.color);
+      capaActivaId = antes;
+    } else if (ev.tipo === "limpiar") {
+      lCtx.clearRect(0, 0, capa.canvas.width, capa.canvas.height);
+    } else if (ev.tipo === "capa-nueva") {
+      const nueva = crearCapa(ev.nombre);
+      nueva.id = ev.capaIdNueva;
+      actualizarPanelCapas();
+    } else if (ev.tipo === "capa-eliminar") {
+      const idx = capas.findIndex(c => c.id === ev.capaId);
+      if (idx >= 0 && capas.length > 1) capas.splice(idx, 1);
+      actualizarPanelCapas();
+    } else if (ev.tipo === "capa-visibilidad") {
+      capa.visible = ev.visible;
+      actualizarPanelCapas();
+    } else if (ev.tipo === "capa-opacidad") {
+      capa.opacidad = ev.opacidad;
+      actualizarPanelCapas();
+    } else if (ev.tipo === "capa-renombrar") {
+      capa.nombre = ev.nombre;
+      actualizarPanelCapas();
+    }
+  } finally {
+    capa.visible = visibilidadOriginal;
+  }
+
+  recomponer();
+  mostrarToast("👥 Cambio de la otra persona");
+}
+
+function aplicarTrazoRemoto(targetCtx, ev, capa) {
+  targetCtx.save();
+  targetCtx.strokeStyle = ev.herramienta === "eraser" ? COLOR_FONDO : ev.color;
+  targetCtx.fillStyle   = ev.herramienta === "eraser" ? COLOR_FONDO : ev.color;
+  targetCtx.lineCap     = "round";
+  targetCtx.lineJoin    = "round";
+  targetCtx.lineWidth   = ev.tamano * (
+    ev.herramienta === "eraser" ? 2 :
+    ev.herramienta === "brush"  ? 1.4 :
+    ev.herramienta === "marker" ? 1.6 : 1
+  );
+  targetCtx.globalAlpha =
+    ev.herramienta === "eraser" ? 1 :
+    (ev.herramienta === "marker" ? ev.opacidad * 0.5 : ev.opacidad) * capa.opacidad;
+
+  const pts = ev.puntos || [];
+  if (pts.length === 1) {
+    targetCtx.beginPath();
+    targetCtx.arc(pts[0].x, pts[0].y, targetCtx.lineWidth / 2, 0, Math.PI * 2);
+    targetCtx.fill();
+  } else if (pts.length > 1) {
+    targetCtx.beginPath();
+    targetCtx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
+    targetCtx.stroke();
+  }
+  targetCtx.restore();
+}
+
+function aplicarFormaRemota(targetCtx, ev, capa) {
+  targetCtx.save();
+  aplicarEstiloPara(targetCtx, ev.herramienta, ev.color, ev.tamano, ev.opacidad);
+  targetCtx.globalAlpha *= capa.opacidad;
+  targetCtx.beginPath();
+  const a = ev.inicio, b = ev.fin;
+  if (ev.herramienta === "line") {
+    targetCtx.moveTo(a.x, a.y);
+    targetCtx.lineTo(b.x, b.y);
+  } else if (ev.herramienta === "rect") {
+    const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+    targetCtx.rect(x, y, Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+  } else if (ev.herramienta === "circle") {
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    targetCtx.ellipse(cx, cy, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2);
+  }
+  targetCtx.stroke();
+  targetCtx.restore();
+}
+
+function aplicarEstiloPara(targetCtx, herramienta, color, tamano, opacidad) {
+  targetCtx.strokeStyle = color;
+  targetCtx.fillStyle   = color;
+  targetCtx.lineCap     = "round";
+  targetCtx.lineJoin    = "round";
+  targetCtx.lineWidth   = tamano;
+  targetCtx.globalAlpha = opacidad;
+  if (herramienta === "brush")  { targetCtx.lineWidth = tamano * 1.4; targetCtx.globalAlpha = opacidad * 0.9; }
+  if (herramienta === "marker") { targetCtx.lineWidth = tamano * 1.6; targetCtx.globalAlpha = opacidad * 0.5; }
+  if (herramienta === "eraser") { targetCtx.lineWidth = tamano * 2;   targetCtx.globalAlpha = 1; }
+}
+
+/* ---------- 4. Presencia (trazo vivo del otro) ---------- */
+function dibujarPresenciaRemota() {
+  if (!previewCtx) return;
+  if (dibujando && HERRAMIENTAS_FORMAS.includes(herramienta)) return;
+
+  previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  if (!presenciaRemota) return;
+
+  const ev = presenciaRemota;
+  const capa = capas.find(c => c.id === ev.capaId);
+  if (!capa) return;
+
+  previewCtx.save();
+  if (ev.tipo === "trazo") {
+    aplicarTrazoRemota(previewCtx, ev, capa);
+  } else if (ev.tipo === "forma" && ev.inicio && ev.fin) {
+    aplicarFormaRemota(previewCtx, ev, capa);
+  }
+  previewCtx.restore();
+}
