@@ -1098,3 +1098,212 @@ body:-webkit-full-screen .estudio-header {
 @media (display-mode: fullscreen) {
   .estudio-footer { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
 }
+/* ============================================================
+   MOBILE BOTTOM SHEETS — Herramientas, Colores y Ajustes
+   Solo se activa en móvil o pantallas táctiles pequeñas.
+============================================================ */
+
+/* Por defecto (desktop) ocultos */
+.mobile-shortcuts { display: none; }
+.sheet-overlay    { display: none; }
+
+@media (max-width: 640px), ((pointer: coarse) and (max-width: 1024px)) {
+
+  /* ---------- Accesos rápidos en el footer ---------- */
+  .mobile-shortcuts {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #262626;
+    border-top: 1px solid #2f2f2f;
+  }
+  .shortcut-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: #2f2f2f;
+    border: 1px solid #3a3a3a;
+    border-radius: 14px;
+    color: #e0b87e;
+    font-family: system-ui, sans-serif;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .shortcut-btn:active {
+    transform: scale(.94);
+    background: #3a3a3a;
+  }
+  .shortcut-btn .shortcut-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  .shortcut-btn .shortcut-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #3b322b;
+    border: 3px solid #e0b87e;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.5);
+    transition: background .2s;
+  }
+
+  /* ---------- Bottom sheets ---------- */
+  .tools-bar,
+  .colors-bar,
+  .sliders-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: row;
+    background: #1e1e1e;
+    border-top: 1px solid #333;
+    border-radius: 24px 24px 0 0;
+    padding: 22px 14px calc(20px + env(safe-area-inset-bottom));
+    box-shadow: 0 -20px 60px rgba(0,0,0,.75);
+    z-index: 1000;
+    transform: translateY(110%);
+    transition: transform .32s cubic-bezier(.2,.7,.3,1);
+    max-height: 62vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    will-change: transform;
+  }
+
+  .tools-bar.abierto,
+  .colors-bar.abierto,
+  .sliders-bar.abierto {
+    transform: translateY(0);
+  }
+
+  /* Barrita superior indicando que se puede arrastrar hacia abajo */
+  .tools-bar::before,
+  .colors-bar::before,
+  .sliders-bar::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 4px;
+    background: rgba(224, 184, 126, .5);
+    border-radius: 4px;
+  }
+
+  /* ---------- Overlay ---------- */
+  .sheet-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+    z-index: 999;
+  }
+  .sheet-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ---------- Herramientas: grid 5 columnas, más grandes ---------- */
+  .tools-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    overflow-x: visible;
+  }
+  .tool {
+    min-width: 0;
+    padding: 14px 4px 12px;
+    border-radius: 14px;
+    gap: 5px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tool svg  { width: 26px; height: 26px; }
+  .tool span { font-size: .62rem; letter-spacing: .3px; }
+
+  /* ---------- Colores: swatches grandes en varias filas ---------- */
+  .colors-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+  .color-actual-wrap {
+    flex: 0 0 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+  .color-actual {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border-width: 3px;
+  }
+  .paleta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    flex: 1 1 100%;
+  }
+  .swatch {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border-width: 2px;
+    transition: transform .12s, box-shadow .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .swatch.active {
+    box-shadow: 0 0 0 3px #e0b87e;
+    transform: scale(1.06);
+  }
+
+  /* ---------- Sliders: verticales, más cómodos ---------- */
+  .sliders-bar {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .slider-wrap {
+    max-width: 100%;
+    width: 100%;
+  }
+  .slider-label { font-size: .72rem; }
+  .slider-val   { font-size: .82rem; min-width: 40px; }
+  .slider-wrap input[type="range"] { height: 8px; }
+  .slider-wrap input[type="range"]::-webkit-slider-thumb {
+    width: 26px;
+    height: 26px;
+  }
+  .slider-wrap input[type="range"]::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+  }
+
+  /* Toast sube un poco para no quedar bajo los shortcuts */
+  .toast { bottom: 90px; }
+
+  /* Ocultar botones que ya no se usan en móvil dentro del header */
+  /* (por si acaso; puedes reactivarlos si los necesitas) */
+  /* #btn-fullscreen { display: none; } */
+}

@@ -2077,3 +2077,103 @@ function dibujarPresenciaRemota() {
   }
   previewCtx.restore();
 }
+/* ============================================================
+   MOBILE BOTTOM SHEETS — Herramientas / Colores / Ajustes
+   Solo activos en móvil o pantallas táctiles pequeñas.
+============================================================ */
+(() => {
+  const mq = window.matchMedia(
+    "(max-width: 640px), ((pointer: coarse) and (max-width: 1024px))"
+  );
+  const esMovil = () => mq.matches;
+
+  const toolsBar  = document.getElementById("tools-bar");
+  const colorsBar = document.getElementById("colors-bar");
+  const slidersBar = document.getElementById("sliders-bar");
+  const overlay   = document.getElementById("sheet-overlay");
+
+  const btnTools   = document.getElementById("btn-tools-mobile");
+  const btnColors  = document.getElementById("btn-colors-mobile");
+  const btnSliders = document.getElementById("btn-sliders-mobile");
+  const previewSw  = document.getElementById("shortcut-color-preview");
+
+  const sheets = [toolsBar, colorsBar, slidersBar].filter(Boolean);
+
+  function cerrarSheets() {
+    sheets.forEach(s => s.classList.remove("abierto"));
+    overlay?.classList.remove("visible");
+  }
+
+  function abrirSheet(sheet) {
+    if (!sheet) return;
+    cerrarSheets();
+    // rAF para que se aplique el estado inicial antes de animar
+    requestAnimationFrame(() => {
+      sheet.classList.add("abierto");
+      overlay?.classList.add("visible");
+    });
+  }
+
+  function toggleSheet(sheet) {
+    if (!sheet) return;
+    if (sheet.classList.contains("abierto")) cerrarSheets();
+    else abrirSheet(sheet);
+  }
+
+  btnTools?.addEventListener("click",   () => toggleSheet(toolsBar));
+  btnColors?.addEventListener("click",  () => toggleSheet(colorsBar));
+  btnSliders?.addEventListener("click", () => toggleSheet(slidersBar));
+
+  overlay?.addEventListener("click", cerrarSheets);
+
+  // Escape también cierra
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") cerrarSheets();
+  });
+
+  // Al elegir una herramienta, cerrar el sheet (solo en móvil)
+  document.querySelectorAll(".tool").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (esMovil()) {
+        setTimeout(cerrarSheets, 150);   // pequeño delay para ver el feedback visual
+      }
+    });
+  });
+
+  // ------------------------------------------------------------
+  // Preview del color en el shortcut "Color"
+  // ------------------------------------------------------------
+  function actualizarPreviewColor(hex) {
+    if (previewSw && hex) previewSw.style.background = hex;
+  }
+
+  // Cuando se toca un swatch
+  document.querySelectorAll(".swatch").forEach(sw => {
+    sw.addEventListener("click", () => {
+      const hex = sw.dataset.color;
+      if (hex) actualizarPreviewColor(hex);
+    });
+  });
+
+  // Cuando se cambia el color custom (input type="color")
+  const colorCustomInput = document.getElementById("color-custom");
+  colorCustomInput?.addEventListener("input", (e) => {
+    actualizarPreviewColor(e.target.value);
+  });
+  colorCustomInput?.addEventListener("change", (e) => {
+    actualizarPreviewColor(e.target.value);
+  });
+
+  // Estado inicial
+  if (colorCustomInput) actualizarPreviewColor(colorCustomInput.value);
+
+  // ------------------------------------------------------------
+  // Cerrar sheets si pasa de móvil a desktop (al rotar/redimensionar)
+  // ------------------------------------------------------------
+  mq.addEventListener?.("change", (e) => {
+    if (!e.matches) cerrarSheets();
+  });
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => { if (!esMovil()) cerrarSheets(); }, 250);
+  });
+})();
