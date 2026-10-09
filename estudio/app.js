@@ -25,13 +25,17 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
 }
 
 /* ============================================================
-   REFERENCIAS DEL DOM
+   REFERENCIAS DEL DOM  (todas arriba para evitar TDZ)
 ============================================================ */
 const canvas        = document.getElementById("canvas");
 const ctx           = canvas.getContext("2d", { willReadFrequently: true });
 const previewCanvas = document.getElementById("preview-canvas");
 const previewCtx    = previewCanvas.getContext("2d");
 const wrapper       = document.getElementById("canvas-wrapper");
+const estudioMain   = document.getElementById("estudio-main");
+const btnResetZoom  = document.getElementById("btn-reset-zoom");
+const btnFullscreen = document.getElementById("btn-fullscreen");
+const eraserCursor  = document.getElementById("eraser-cursor");
 
 let W = canvas.width;
 let H = canvas.height;
@@ -766,8 +770,6 @@ document.addEventListener("keydown", e => {
 /* ============================================================
    CURSOR DE BORRADOR
 ============================================================ */
-const eraserCursor = document.getElementById("eraser-cursor");
-
 function actualizarTamanoCursorBorrador() {
   const rect = canvas.getBoundingClientRect();
   const factor = rect.width / W;
@@ -804,7 +806,7 @@ canvas.addEventListener("pointerup", e => {
   if (e.pointerType === "touch") ocultarCursorBorrador();
 });
 
-document.getElementById("slider-size").addEventListener("input", () => {
+sliderSize.addEventListener("input", () => {
   if (herramienta === "eraser" && eraserCursor.classList.contains("visible")) {
     actualizarTamanoCursorBorrador();
   }
@@ -816,53 +818,25 @@ document.querySelectorAll(".tool").forEach(btn => {
   });
 });
 
-window.addEventListener("resize", () => {
-  if (eraserCursor.classList.contains("visible")) {
-    actualizarTamanoCursorBorrador();
-  }
-});
-
 /* ============================================================
-   AJUSTAR CANVAS AL TAMAÑO DISPONIBLE
+   RESOLUCIÓN LÓGICA FIJA DEL LIENZO  ★ NUEVO
+============================================================
+   W×H son el buffer real en píxeles. Igual en TODOS los
+   dispositivos (desktop y móvil). El tamaño visible lo controla
+   SOLO el CSS del wrapper. Nunca se multiplica por DPR.
 ============================================================ */
-function ajustarTamanoCanvas() {
-  const container = wrapper.parentElement;
-  if (!container) return;
 
-  const contRect = container.getBoundingClientRect();
-  if (contRect.width === 0 || contRect.height === 0) return;
+function fijarResolucionLienzo(nuevoW, nuevoH) {
+  if (!Number.isFinite(nuevoW) || !Number.isFinite(nuevoH)) return;
+  if (nuevoW < 100 || nuevoH < 100) return;
+  if (nuevoW > 4096 || nuevoH > 4096) return;
+  if (nuevoW === W && nuevoH === H &&
+      canvas.width === nuevoW && canvas.height === nuevoH) return;
 
-  const availW = contRect.width  - 12;
-  const availH = contRect.height - 12;
-  if (availW <= 0 || availH <= 0) return;
+  // 1) Reescalar capas existentes al nuevo buffer
+  redimensionarCapas(nuevoW, nuevoH);
 
-  let ratio = 1;
-  if (proyectoFirestore?.ancho && proyectoFirestore?.alto) {
-    ratio = proyectoFirestore.ancho / proyectoFirestore.alto;
-  }
-
-  let w = availW;
-  let h = w / ratio;
-  if (h > availH) { h = availH; w = h * ratio; }
-
-  w = Math.round(w);
-  h = Math.round(h);
-
-  wrapper.style.width  = w + "px";
-  wrapper.style.height = h + "px";
-
-  const dpr = window.devicePixelRatio || 1;
-  const nuevoW = Math.round(w * dpr);
-  const nuevoH = Math.round(h * dpr);
-
-  if (canvas.width === nuevoW && canvas.height === nuevoH) return;
-
-  let imgActual = null;
-  if (canvas.width > 0 && canvas.height > 0) {
-    try { imgActual = ctx.getImageData(0, 0, canvas.width, canvas.height); }
-    catch (e) { imgActual = null; }
-  }
-
+  // 2) Redimensionar canvas principal y preview
   canvas.width  = nuevoW;
   canvas.height = nuevoH;
   previewCanvas.width  = nuevoW;
@@ -871,34 +845,63 @@ function ajustarTamanoCanvas() {
   W = nuevoW;
   H = nuevoH;
 
-  redimensionarCapas(nuevoW, nuevoH);
-
   if (capas.length === 0) {
     const capa = crearCapa("Capa 1");
     capaActivaId = capa.id;
   }
 
   recomponer();
-
   history.length = 0;
   historyIndex = -1;
   guardarHistorial();
 
-  console.log(`📐 Canvas: ${w}×${h} (ratio ${ratio.toFixed(2)}, DPR ${dpr})`);
+  console.log(`📐 Resolución lógica: ${W}×${H}`);
 }
 
-window.addEventListener("resize", ajustarTamanoCanvas);
+/* Ajusta SOLO el tamaño visible (CSS) del wrapper. Nunca el buffer. */
+function ajustarTamanoCanvas() {
+  if (!estudioMain) return;
+
+  const contRect = estudioMain.getBoundingClientRect();
+  if (contRect.width === 0 || contRect.height === 0) return;
+
+  const availW = contRect.width  - 12;
+  const availH = contRect.height - 12;
+  if (availW <= 0 || availH <= 0) return;
+
+  const ratio = W / H;
+  let w = availW;
+  let h = w / ratio;
+  if (h > availH) { h = availH; w = h * ratio; }
+
+  wrapper.style.width  = Math.round(w) + "px";
+  wrapper.style.height = Math.round(h) + "px";
+}
+
+/* Reajustar CSS cuando cambie el viewport (sin tocar el buffer) */
+window.addEventListener("resize", () => requestAnimationFrame(ajustarTamanoCanvas));
 window.addEventListener("orientationchange", () => setTimeout(ajustarTamanoCanvas, 250));
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize",
+    () => requestAnimationFrame(ajustarTamanoCanvas));
+}
+
+/* ResizeObserver: mide el contenedor DESPUÉS del reflow */
+if (window.ResizeObserver && estudioMain) {
+  const ro = new ResizeObserver(() => requestAnimationFrame(ajustarTamanoCanvas));
+  ro.observe(estudioMain);
+}
 
 /* ============================================================
    ARRANQUE
 ============================================================ */
-pintarFondoInicial();
-
 function pintarFondoInicial() {
   ctx.fillStyle = COLOR_FONDO;
   ctx.fillRect(0, 0, W, H);
 }
+
+pintarFondoInicial();
 
 if (capas.length === 0) {
   const capa = crearCapa("Capa 1");
@@ -909,6 +912,9 @@ guardarHistorial();
 renderPaleta();
 document.getElementById("color-actual").style.background = colorActual;
 document.getElementById("color-custom").value = colorActual;
+
+/* Ajuste inicial del wrapper (solo CSS) */
+ajustarTamanoCanvas();
 
 /* ============================================================
    PANEL DE CAPAS — UI
@@ -1421,8 +1427,15 @@ async function initFirebaseProyecto() {
     if (h1) h1.textContent = "🎨 " + (proyectoFirestore.nombre || "Sin título");
 
     setTimeout(async () => {
+      // 1) Fijar la resolución real del proyecto (una sola vez)
+      const ancho = parseInt(proyectoFirestore?.ancho, 10) || 1400;
+      const alto  = parseInt(proyectoFirestore?.alto,  10) || 1400;
+      fijarResolucionLienzo(ancho, alto);
+
+      // 2) Ajustar solo el tamaño CSS visible
       ajustarTamanoCanvas();
 
+      // 3) Cargar contenido
       if (Array.isArray(proyectoFirestore.capasData) && proyectoFirestore.capasData.length > 0) {
         await cargarCapasDesdeFirestore(proyectoFirestore.capasData);
       } else if (proyectoFirestore.canvasData) {
@@ -1432,7 +1445,7 @@ async function initFirebaseProyecto() {
       recomponer();
       guardarHistorial();
 
-      // ✨ Arranca la sincronización colaborativa en tiempo real
+      // 4) Arranca la sincronización colaborativa
       iniciarSyncColaborativa();
     }, 300);
 
@@ -1496,7 +1509,7 @@ async function cargarCapaUnicaDesdeFirestore(canvasData) {
   console.log("📚 1 capa cargada (formato antiguo)");
 }
 
-/* Guardar solo composite + thumbnail (mucho más ligero) */
+/* Guardar solo composite + thumbnail */
 async function guardarProyectoEnFirestore(compositeJPEG, thumbnailJPEG) {
   await setDoc(
     doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
@@ -1597,7 +1610,6 @@ function mostrarIndicadorGuardado() {
 }
 
 window.addEventListener("beforeunload", () => {
-  // ✨ Limpiar presencia y listeners
   limpiarPresencia();
   unsubEventos?.();
   unsubPresencia?.();
@@ -1632,10 +1644,6 @@ let panY  = 0;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 1.15;
-
-const estudioMain  = document.getElementById("estudio-main");
-const btnResetZoom = document.getElementById("btn-reset-zoom");
-const btnFullscreen = document.getElementById("btn-fullscreen");
 
 function aplicarTransform() {
   wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
@@ -1695,11 +1703,10 @@ function midpointTouches(t1, t2) {
   };
 }
 
-estudioMain.addEventListener("touchstart", (e) => {
+estudioMain?.addEventListener("touchstart", (e) => {
   if (e.touches.length === 2) {
     e.preventDefault();
 
-    // Cancelar cualquier trazo en curso
     dibujando = false;
     startPoint = null;
     lastPoint  = null;
@@ -1718,7 +1725,7 @@ estudioMain.addEventListener("touchstart", (e) => {
   }
 }, { passive: false });
 
-estudioMain.addEventListener("touchmove", (e) => {
+estudioMain?.addEventListener("touchmove", (e) => {
   if (touchMode === "pinch" && e.touches.length === 2) {
     e.preventDefault();
 
@@ -1737,7 +1744,7 @@ estudioMain.addEventListener("touchmove", (e) => {
   }
 }, { passive: false });
 
-estudioMain.addEventListener("touchend", (e) => {
+estudioMain?.addEventListener("touchend", (e) => {
   if (e.touches.length < 2 && touchMode === "pinch") {
     touchMode = null;
     wrapper.classList.remove("gesture-active");
@@ -1745,7 +1752,7 @@ estudioMain.addEventListener("touchend", (e) => {
   }
 }, { passive: true });
 
-estudioMain.addEventListener("touchcancel", () => {
+estudioMain?.addEventListener("touchcancel", () => {
   touchMode = null;
   wrapper.classList.remove("gesture-active");
 });
@@ -1757,7 +1764,7 @@ let ultimoTapTiempo = 0;
 let ultimoTapX = 0;
 let ultimoTapY = 0;
 
-estudioMain.addEventListener("touchend", (e) => {
+estudioMain?.addEventListener("touchend", (e) => {
   if (e.touches.length > 0) return;
 
   const ahora = Date.now();
@@ -1782,7 +1789,7 @@ estudioMain.addEventListener("touchend", (e) => {
 /* ============================================================
    ZOOM CON RUEDA (PC) — Ctrl + rueda
 ============================================================ */
-estudioMain.addEventListener("wheel", (e) => {
+estudioMain?.addEventListener("wheel", (e) => {
   if (!e.ctrlKey && !e.metaKey) return;
   e.preventDefault();
 
@@ -2064,7 +2071,7 @@ function dibujarPresenciaRemota() {
 
   previewCtx.save();
   if (ev.tipo === "trazo") {
-    aplicarTrazoRemota(previewCtx, ev, capa);
+    aplicarTrazoRemoto(previewCtx, ev, capa);   // ★ fix: era aplicarTrazoRemota (typo)
   } else if (ev.tipo === "forma" && ev.inicio && ev.fin) {
     aplicarFormaRemota(previewCtx, ev, capa);
   }
