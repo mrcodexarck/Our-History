@@ -1,356 +1,750 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
+
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
 <meta name="theme-color" content="#241c17" />
+
 <meta name="apple-mobile-web-app-capable" content="yes" />
+
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
 <title>Nuestro Dibujo del Día</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+
 <link rel="stylesheet" href="styles.css">
+
 </head>
+
 <body>
 
+
+
 <!-- ============================================================
+
      OVERLAY DE SELECCIÓN DE PERFIL
+
 ============================================================ -->
+
 <div class="perfil-overlay" id="perfil-overlay">
+
   <div class="perfil-card">
+
     <h1 class="perfil-titulo">¿Quién eres?</h1>
+
     <p class="perfil-sub">Elige tu perfil para dibujar</p>
 
+
+
     <div class="perfil-opciones">
+
       <button type="button" class="perfil-opcion" data-perfil="joan">
+
         <span class="perfil-op-emoji" data-emoji-de="joan">🤎</span>
+
         <span class="perfil-op-nombre" data-nombre-de="joan">Joan</span>
+
       </button>
+
       <button type="button" class="perfil-opcion" data-perfil="emily">
+
         <span class="perfil-op-emoji" data-emoji-de="emily">💛</span>
+
         <span class="perfil-op-nombre" data-nombre-de="emily">Emily</span>
+
       </button>
+
     </div>
 
+
+
     <p class="perfil-nota">Los dos pueden dibujar en las dos hojas 🤎</p>
+
   </div>
+
 </div>
 
+
+
 <!-- ============================================================
+
      HEADER
+
 ============================================================ -->
+
 <header class="app-header">
+
   <a href="../menu.html" class="icon-btn" aria-label="Volver">
+
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+
   </a>
+
   <div class="titulo">
+
     <span class="fecha-dia" id="fecha-dia">—</span>
+
     <span class="fecha-anio" id="fecha-anio">—</span>
+
   </div>
+
   <button type="button" class="perfil-btn" id="perfil-btn" title="Mi perfil">
+
     <span class="perfil-btn-emoji" id="perfil-btn-emoji">🤎</span>
+
     <span class="perfil-btn-nombre" id="perfil-btn-nombre">Joan</span>
+
     <span class="status-dot" id="status-dot"></span>
+
   </button>
+
 </header>
 
-<!-- ============================================================
-     TABS DE HOJAS
-============================================================ -->
-<div class="tabs-hojas" id="tabs-hojas">
-  <button type="button" class="tab" data-hoja="1">
-    <span class="tab-num">1</span>
-    <span class="tab-label" id="tab-label-1">Joan</span>
-  </button>
-  <button type="button" class="tab" data-hoja="2">
-    <span class="tab-num">2</span>
-    <span class="tab-label" id="tab-label-2">Emily</span>
-  </button>
-</div>
+
 
 <!-- ============================================================
-     CANVAS
+
+     TABS DE HOJAS
+
 ============================================================ -->
+
+<div class="tabs-hojas" id="tabs-hojas">
+
+  <button type="button" class="tab" data-hoja="1">
+
+    <span class="tab-num">1</span>
+
+    <span class="tab-label" id="tab-label-1">Joan</span>
+
+  </button>
+
+  <button type="button" class="tab" data-hoja="2">
+
+    <span class="tab-num">2</span>
+
+    <span class="tab-label" id="tab-label-2">Emily</span>
+
+  </button>
+
+</div>
+
+
+
+<!-- ============================================================
+
+     CANVAS
+
+============================================================ -->
+
 <div class="canvas-area">
+
   <div class="canvas-wrapper" id="canvas-wrapper">
-    <canvas id="canvas" width="900" height="900"></canvas>
+
+    <div class="canvas-surface" id="canvas-surface">
+      <canvas id="canvas" width="900" height="900" aria-label="Lienzo de dibujo"></canvas>
+    </div>
 
     <button type="button" class="banana-btn" id="banana-btn" aria-label="Mensaje del día">
       <span class="banana-emoji">🍌</span>
       <span class="banana-badge" id="banana-badge" hidden></span>
     </button>
+
+    <button type="button" class="canvas-layer-button" id="btn-layers" aria-label="Administrar capas" title="Capas">
+      <span aria-hidden="true">▱</span> Capas
+    </button>
+
+    <div class="canvas-zoom-controls" aria-label="Controles de zoom">
+      <button type="button" id="zoom-out" aria-label="Alejar lienzo" title="Alejar">−</button>
+      <button type="button" id="zoom-reset" aria-label="Restablecer zoom" title="Restablecer zoom"><span id="zoom-value">100%</span></button>
+      <button type="button" id="zoom-in" aria-label="Acercar lienzo" title="Acercar">+</button>
+    </div>
+
+    <div class="selection-actions" id="selection-actions" hidden>
+      <span id="selection-label">Elemento seleccionado</span>
+      <button type="button" id="btn-delete-selection">Eliminar</button>
+    </div>
+
   </div>
+
 </div>
 
+
+
 <!-- ============================================================
+
      PANEL DE HERRAMIENTAS
+
 ============================================================ -->
+
 <div class="panel-herramientas" id="panel-herramientas">
+
   <div class="drawer-handle"></div>
+
   <button type="button" class="drawer-cerrar" id="drawer-cerrar" aria-label="Cerrar">✕</button>
 
+
+
   <!-- Paleta de lápices -->
+
   <div class="paleta">
+
     <div class="paleta-titulo">
+
       <span>✏️ Colores</span>
+
     </div>
+
     <div class="lapices" id="lapices"></div>
+
   </div>
+
+
 
   <!-- ============================================================
+
        BARRA CON 3 BOTONES: Herramientas | Color | Acciones
+
   ============================================================ -->
+
   <div class="herramientas-wrap">
 
+
+
   <!-- BOTÓN 1: LÁPICES (menú desplegable) -->
+
   <div class="bloque-menu">
+
     <div class="menu-lapices" id="menu-lapices">
+
       <button type="button" class="menu-item tool-item active" data-tool="lapiz">
+
         <span class="menu-item-icono">
+
           <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>
+
         </span>
+
         <span class="menu-item-texto">Lápiz</span>
+
         <span class="menu-item-check">✓</span>
+
       </button>
+
+
 
       <button type="button" class="menu-item tool-item" data-tool="marcador">
+
         <span class="menu-item-icono">
+
           <svg viewBox="0 0 24 24"><path d="M15 3l6 6-9 9H6v-6l9-9z" fill="currentColor"/><rect x="3" y="19" width="18" height="2" rx="1" fill="currentColor"/></svg>
+
         </span>
+
         <span class="menu-item-texto">Marcador</span>
+
         <span class="menu-item-check">✓</span>
+
       </button>
+
+
 
       <button type="button" class="menu-item tool-item" data-tool="pincel">
+
         <span class="menu-item-icono">
+
           <svg viewBox="0 0 24 24"><path d="M9.5 14.5c-1 2-3 3.5-6 4 2-3 3.5-5 5.5-6l.5 2z" fill="currentColor"/><path d="M14 10l-4 4-1-1 4-4c1-1 3-3 5-5 1.5-1.5 3-2 4-1 1 1 .5 2.5-1 4-2 2-4 4-5 3z" fill="currentColor"/></svg>
+
         </span>
+
         <span class="menu-item-texto">Pincel</span>
+
         <span class="menu-item-check">✓</span>
+
       </button>
+
+
 
       <button type="button" class="menu-item tool-item" data-tool="borrador">
+
         <span class="menu-item-icono">
+
           <svg viewBox="0 0 24 24"><path d="M20 20H7L3 16a2 2 0 010-3L14 2l8 8-7 7" fill="currentColor"/></svg>
+
         </span>
+
         <span class="menu-item-texto">Borrador</span>
+
         <span class="menu-item-check">✓</span>
+
       </button>
+
+
 
       <button type="button" class="menu-item tool-item" data-tool="bote">
+
         <span class="menu-item-icono">
+
           <svg viewBox="0 0 24 24"><path d="M18 4l-1.5-1.5a1 1 0 00-1.4 0L4 13.5V17l8-8 4 4-8 8h3.5l10.5-10.5a1 1 0 000-1.4L18 4z" fill="currentColor"/><path d="M20 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z" fill="currentColor"/></svg>
+
         </span>
+
         <span class="menu-item-texto">Bote de pintura</span>
+
+        <span class="menu-item-check">✓</span>
+
+      </button>
+
+      <button type="button" class="menu-item tool-item" data-tool="seleccionar">
+        <span class="menu-item-icono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 10-6 1-3 6-5-17z"/><path d="M13 15l5 5"/></svg>
+        </span>
+        <span class="menu-item-texto">Seleccionar y mover</span>
         <span class="menu-item-check">✓</span>
       </button>
+
     </div>
 
+
+
     <button type="button" class="btn-menu btn-menu-lapices" id="btn-lapices">
+
       <span class="btn-menu-icono" id="btn-lapices-icono">
+
         <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>
+
       </span>
+
       <span class="btn-menu-texto" id="btn-lapices-texto">Lápiz</span>
+
       <span class="btn-menu-chevron">▲</span>
+
     </button>
+
   </div>
+
+
 
   <!-- BOTÓN 2: COLOR -->
+
   <button type="button" class="btn-menu btn-menu-icon-only" id="btn-color-picker" title="Más colores">
+
     <span class="btn-menu-icono">
+
       <svg viewBox="0 0 24 24">
+
         <path d="M12 2a10 10 0 000 20 2 2 0 001.5-3.3A2 2 0 0115 15.5h2a5 5 0 005-5 8.5 8.5 0 00-8.5-8.5H12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+
         <circle cx="8" cy="9.5" r="1.3" fill="currentColor"/>
+
         <circle cx="12" cy="6.5" r="1.3" fill="currentColor"/>
+
         <circle cx="16" cy="9.5" r="1.3" fill="currentColor"/>
+
       </svg>
+
     </span>
+
     <span class="btn-menu-texto">Color</span>
+
   </button>
+
+
 
   <!-- BOTÓN 3: DESHACER -->
+
   <button type="button" class="btn-menu btn-menu-icon-only" id="btn-undo" title="Deshacer">
+
     <span class="btn-menu-icono">
+
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+
     </span>
+
     <span class="btn-menu-texto">Deshacer</span>
+
   </button>
+
+
 
   <!-- BOTÓN 4: LIMPIAR -->
+
   <button type="button" class="btn-menu btn-menu-icon-only btn-menu-danger" id="btn-clear" title="Limpiar todo">
+
     <span class="btn-menu-icono">
+
       <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+
     </span>
+
     <span class="btn-menu-texto">Limpiar</span>
+
   </button>
 
+
+
 </div>
+
+
 
   <!-- Tamaños -->
+
   <div class="tamanos" id="tamanos">
+
     <button type="button" data-size="3" title="Fino"><span style="width:4px;height:4px"></span></button>
+
     <button type="button" data-size="8" class="active" title="Normal"><span style="width:8px;height:8px"></span></button>
+
     <button type="button" data-size="16" title="Grueso"><span style="width:14px;height:14px"></span></button>
+
     <button type="button" data-size="28" title="Extra"><span style="width:20px;height:20px"></span></button>
+
   </div>
+
 </div>
 
+
+
 <!-- ============================================================
+
      BOTÓN FLOTANTE MÓVIL
+
 ============================================================ -->
+
 <button type="button" class="btn-tools-mobile" id="btn-tools-mobile" aria-label="Herramientas">
+
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
     <circle cx="13.5" cy="6.5" r="2.5"/>
+
     <circle cx="17.5" cy="14.5" r="2.5"/>
+
     <circle cx="8.5" cy="7.5" r="2.5"/>
+
     <circle cx="6.5" cy="15.5" r="2.5"/>
+
     <path d="M12 22h9"/>
+
   </svg>
+
   <span>Herramientas</span>
+
 </button>
+
+
+
+
+<div class="layers-overlay" id="layers-overlay" hidden>
+  <section class="layers-card" role="dialog" aria-modal="true" aria-labelledby="layers-title">
+    <header class="layers-header">
+      <div>
+        <h2 id="layers-title">Capas del dibujo</h2>
+        <p>Orden, visibilidad y bloqueo se sincronizan con el otro perfil.</p>
+      </div>
+      <button type="button" id="layers-close" class="layers-close" aria-label="Cerrar capas">✕</button>
+    </header>
+    <div class="layers-toolbar">
+      <button type="button" id="layer-add" class="layer-primary">＋ Nueva capa</button>
+      <button type="button" id="layer-move-selected" disabled>Mover selección a la capa activa</button>
+    </div>
+    <div id="layers-list" class="layers-list" aria-live="polite"></div>
+    <p id="layers-status" class="layers-status">Los trazos antiguos se conservan en la primera capa.</p>
+  </section>
+</div>
 
 <div class="drawer-overlay" id="drawer-overlay"></div>
 
+
+
 <!-- ============================================================
+
      TOAST DE GUARDADO
+
 ============================================================ -->
+
 <div class="save-indicator" id="save-indicator">
+
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+
   <span>Guardado</span>
+
 </div>
 
+
+
 <!-- ============================================================
+
      MODAL — MENSAJE DEL DÍA
+
 ============================================================ -->
+
 <div class="message-overlay" id="message-overlay" hidden>
+
   <div class="message-card">
+
     <button type="button" class="message-cerrar" id="message-cerrar">✕</button>
+
     <div class="message-icono">🍌</div>
+
     <h3 class="message-titulo" id="message-titulo">Mensaje del día</h3>
+
     <p class="message-sub" id="message-sub">—</p>
+
     <div class="message-lectura" id="message-lectura" hidden>
+
       <p class="message-texto" id="message-texto">—</p>
+
     </div>
+
     <div class="message-editor" id="message-editor" hidden>
+
       <textarea id="message-input"placeholder="Escribe algo lindo para el otro…" rows="4"></textarea>
+
       <button type="button" class="message-guardar" id="message-guardar">Guardar mensaje</button>
+
       <p class="message-nota">Se borra automáticamente mañana 🤎</p>
+
     </div>
+
   </div>
+
 </div>
 
+
+
 <!-- ============================================================
+
      MODAL — EDITAR PERFIL
+
 ============================================================ -->
+
 <div class="perfil-editar-overlay" id="perfil-editar-overlay" hidden>
+
   <div class="perfil-editar-card">
+
     <button type="button" class="perfil-editar-cerrar" id="perfil-editar-cerrar">✕</button>
+
     <h2 class="perfil-editar-titulo">Mi perfil</h2>
+
     <p class="perfil-editar-sub">Personaliza cómo te ves en la app</p>
 
+
+
     <label class="perfil-campo">
+
       <span class="perfil-campo-label">Tu emoji</span>
+
       <div class="perfil-emojis" id="perfil-emojis">
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="🤎">🤎</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="💛">💛</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="🦁">🦁</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="🐻">🐻</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="🐵">🐵</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="🌸">🌸</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="⭐">⭐</button>
+
         <button type="button" class="perfil-emoji-opcion" data-emoji="🌙">🌙</button>
+
       </div>
+
     </label>
 
+
+
     <label class="perfil-campo">
+
       <span class="perfil-campo-label">Nombre</span>
+
       <input type="text" id="perfil-input-nombre" maxlength="20" placeholder="Tu nombre" autocomplete="off">
+
     </label>
 
+
+
     <label class="perfil-campo">
+
       <span class="perfil-campo-label">Cumpleaños <span class="perfil-campo-opcional">(opcional)</span></span>
+
       <input type="text" id="perfil-input-cumple" maxlength="30" placeholder="Ej: 5 de marzo" autocomplete="off">
+
     </label>
 
+
+
     <label class="perfil-campo">
+
       <span class="perfil-campo-label">Una frase <span class="perfil-campo-opcional">(opcional)</span></span>
+
       <input type="text" id="perfil-input-bio" maxlength="60" placeholder="Ej: Dibujando cositas ✨" autocomplete="off">
+
     </label>
+
+
 
     <button type="button" class="perfil-guardar" id="perfil-guardar">Guardar</button>
+
     <button type="button" class="perfil-cambiar-usuario" id="perfil-cambiar-usuario">🔄 Cambiar de usuario</button>
+
   </div>
+
 </div>
 
+
+
 <!-- ============================================================
+
      MODAL — SELECTOR DE COLORES (estilo Paint)
+
 ============================================================ -->
+
 <div class="color-picker-overlay" id="color-picker-overlay" hidden>
+
   <div class="color-picker-card">
+
     <div class="color-picker-header">
+
       <h3>Editar colores</h3>
+
       <button type="button" class="color-picker-cerrar" id="color-picker-cerrar" aria-label="Cerrar">✕</button>
+
     </div>
 
+
+
     <div class="color-picker-body">
+
       <div class="color-picker-top">
+
         <div class="color-picker-gradient" id="color-gradient">
+
           <canvas id="color-gradient-canvas"></canvas>
+
           <div class="color-gradient-cursor" id="color-gradient-cursor"></div>
+
         </div>
+
+
 
         <div class="color-picker-hue" id="color-hue">
+
           <div class="color-hue-cursor" id="color-hue-cursor"></div>
+
         </div>
 
+
+
         <div class="color-picker-info">
+
           <div class="color-picker-preview" id="color-preview-box"></div>
 
+
+
           <div class="color-field-row">
+
             <span class="color-field-tag">Hex</span>
+
             <input type="text" id="color-hex-input" maxlength="7" value="#000000" spellcheck="false">
+
           </div>
+
+
 
           <div class="color-mode-label">RGB</div>
 
+
+
           <div class="color-field-row compact">
+
             <span class="color-field-tag">R</span>
+
             <input type="number" id="color-r-input" min="0" max="255" value="0">
+
           </div>
+
           <div class="color-field-row compact">
+
             <span class="color-field-tag">G</span>
+
             <input type="number" id="color-g-input" min="0" max="255" value="0">
+
           </div>
+
           <div class="color-field-row compact">
+
             <span class="color-field-tag">B</span>
+
             <input type="number" id="color-b-input" min="0" max="255" value="0">
+
           </div>
+
         </div>
+
       </div>
+
+
 
       <div class="color-picker-sections">
-        <div class="color-section">
-          <h4>Colores básicos</h4>
-          <div class="color-grid" id="color-basicos"></div>
-        </div>
 
         <div class="color-section">
-          <h4>
-            Colores personalizados
-            <button type="button" class="color-add-custom" id="color-add-custom" title="Agregar color actual">＋</button>
-          </h4>
-          <div class="color-grid" id="color-custom"></div>
+
+          <h4>Colores básicos</h4>
+
+          <div class="color-grid" id="color-basicos"></div>
+
         </div>
+
+
+
+        <div class="color-section">
+
+          <h4>
+
+            Colores personalizados
+
+            <button type="button" class="color-add-custom" id="color-add-custom" title="Agregar color actual">＋</button>
+
+          </h4>
+
+          <div class="color-grid" id="color-custom"></div>
+
+        </div>
+
       </div>
+
     </div>
+
+
 
     <div class="color-picker-footer">
+
       <button type="button" class="color-btn cancelar" id="color-cancelar">Cancelar</button>
+
       <button type="button" class="color-btn aplicar" id="color-aplicar">Aceptar</button>
+
     </div>
+
   </div>
+
 </div>
+
+
 
 <script type="module" src="app.js"></script>
 
+
+
 </body>
+
 </html>
