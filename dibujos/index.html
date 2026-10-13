@@ -155,15 +155,13 @@
       <span class="banana-badge" id="banana-badge" hidden></span>
     </button>
 
-    <button type="button" class="canvas-layer-button" id="btn-layers" aria-label="Administrar capas" title="Capas">
-      <span aria-hidden="true">▱</span> Capas
+    <button type="button" class="canvas-zoom-reset" id="zoom-reset" aria-label="Volver a la vista al 100%" title="Volver a la vista al 100%">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11a9 9 0 1 1 2.64 6.36"/>
+        <path d="M3 4v7h7"/>
+      </svg>
+      <span id="zoom-value">100%</span>
     </button>
-
-    <div class="canvas-zoom-controls" aria-label="Controles de zoom">
-      <button type="button" id="zoom-out" aria-label="Alejar lienzo" title="Alejar">−</button>
-      <button type="button" id="zoom-reset" aria-label="Restablecer zoom" title="Restablecer zoom"><span id="zoom-value">100%</span></button>
-      <button type="button" id="zoom-in" aria-label="Acercar lienzo" title="Acercar">+</button>
-    </div>
 
     <div class="selection-actions" id="selection-actions" hidden>
       <span id="selection-label">Elemento seleccionado</span>
@@ -356,35 +354,42 @@
 
 
 
-  <!-- BOTÓN 3: DESHACER -->
-
-  <button type="button" class="btn-menu btn-menu-icon-only" id="btn-undo" title="Deshacer">
-
-    <span class="btn-menu-icono">
-
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-
-    </span>
-
-    <span class="btn-menu-texto">Deshacer</span>
-
-  </button>
-
-
-
-  <!-- BOTÓN 4: LIMPIAR -->
-
-  <button type="button" class="btn-menu btn-menu-icon-only btn-menu-danger" id="btn-clear" title="Limpiar todo">
-
-    <span class="btn-menu-icono">
-
-      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-
-    </span>
-
-    <span class="btn-menu-texto">Limpiar</span>
-
-  </button>
+  <!-- Menú desplegable de acciones: deshacer, capas, eliminar y limpiar -->
+  <div class="bloque-menu bloque-menu-acciones">
+    <div class="menu-acciones" id="menu-acciones" aria-label="Acciones del dibujo">
+      <button type="button" class="menu-item" id="btn-undo" title="Deshacer último trazo">
+        <span class="menu-item-icono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+        </span>
+        <span class="menu-item-texto">Deshacer</span>
+      </button>
+      <button type="button" class="menu-item" id="btn-layers" title="Administrar capas">
+        <span class="menu-item-icono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></svg>
+        </span>
+        <span class="menu-item-texto">Capas</span>
+      </button>
+      <button type="button" class="menu-item" id="btn-menu-delete-selection" title="Eliminar el elemento seleccionado" disabled>
+        <span class="menu-item-icono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="m6 7 1 14h10l1-14"/><path d="M9 7V4h6v3"/></svg>
+        </span>
+        <span class="menu-item-texto">Eliminar selección</span>
+      </button>
+      <button type="button" class="menu-item menu-item-danger" id="btn-clear" title="Limpiar toda la hoja">
+        <span class="menu-item-icono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/><path d="M9 6V3h6v3"/></svg>
+        </span>
+        <span class="menu-item-texto">Limpiar hoja</span>
+      </button>
+    </div>
+    <button type="button" class="btn-menu btn-menu-actions" id="btn-acciones" title="Acciones del dibujo" aria-haspopup="true" aria-expanded="false" aria-controls="menu-acciones">
+      <span class="btn-menu-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+      </span>
+      <span class="btn-menu-texto">Acciones</span>
+      <span class="btn-menu-chevron">▲</span>
+    </button>
+  </div>
 
 
 

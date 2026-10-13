@@ -365,6 +365,8 @@ function actualizarUISeleccion() {
   if (addButton) addButton.disabled = !firebaseListo || !layerMetadataReady[hojaActual];
   const deleteButton = document.getElementById("btn-delete-selection");
   if (deleteButton) deleteButton.disabled = !selected || locked;
+  const menuDeleteButton = document.getElementById("btn-menu-delete-selection");
+  if (menuDeleteButton) menuDeleteButton.disabled = !selected || locked;
 }
 
 function actualizarCapasDocumentoRef(tab, layerId) {
@@ -1407,6 +1409,8 @@ function cerrarTodosLosMenus() {
   menuAcciones?.classList.remove("abierto");
 
   btnAcciones?.classList.remove("abierto");
+  btnLapices?.setAttribute("aria-expanded", "false");
+  btnAcciones?.setAttribute("aria-expanded", "false");
 
 }
 
@@ -1425,6 +1429,7 @@ btnLapices?.addEventListener("click", e => {
     menuLapices?.classList.add("abierto");
 
     btnLapices?.classList.add("abierto");
+    btnLapices?.setAttribute("aria-expanded", "true");
 
   }
 
@@ -1445,6 +1450,7 @@ btnAcciones?.addEventListener("click", e => {
     menuAcciones?.classList.add("abierto");
 
     btnAcciones?.classList.add("abierto");
+    btnAcciones?.setAttribute("aria-expanded", "true");
 
   }
 
@@ -1870,14 +1876,19 @@ async function moverSeleccionACapaActiva() {
   }
 }
 
-document.getElementById("btn-layers")?.addEventListener("click", abrirPanelCapas);
+document.getElementById("btn-layers")?.addEventListener("click", () => {
+  cerrarTodosLosMenus();
+  abrirPanelCapas();
+});
 document.getElementById("layers-close")?.addEventListener("click", cerrarPanelCapas);
 layersOverlay?.addEventListener("click", e => { if (e.target === layersOverlay) cerrarPanelCapas(); });
 document.getElementById("layer-add")?.addEventListener("click", crearCapa);
 document.getElementById("layer-move-selected")?.addEventListener("click", moverSeleccionACapaActiva);
 document.getElementById("btn-delete-selection")?.addEventListener("click", eliminarSeleccion);
-document.getElementById("zoom-in")?.addEventListener("click", () => cambiarZoom(canvasView.scale * 1.25));
-document.getElementById("zoom-out")?.addEventListener("click", () => cambiarZoom(canvasView.scale / 1.25));
+document.getElementById("btn-menu-delete-selection")?.addEventListener("click", () => {
+  cerrarTodosLosMenus();
+  eliminarSeleccion();
+});
 document.getElementById("zoom-reset")?.addEventListener("click", restablecerVistaCanvas);
 
 /* ============================================================
