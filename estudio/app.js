@@ -55,9 +55,9 @@ let snapshotAntes = null;
 let textoPosicion = null;
 
 /* ============================================================
-   HISTORIAL
+   HISTORIAL  (por capas)
 ============================================================ */
-const MAX_HISTORY = 25;
+const MAX_HISTORY = 15;   // reducido: cada snapshot guarda todas las capas
 const history = [];
 let historyIndex = -1;
 
@@ -216,23 +216,65 @@ sliderOpacity.addEventListener("input", () => {
 });
 
 /* ============================================================
-   HISTORIAL
+   HISTORIAL  (por capas)  ★ REESCRITO
 ============================================================ */
 function guardarHistorial() {
+  // Cortar la rama "redo" si estamos en medio
   history.splice(historyIndex + 1);
-  const estado = ctx.getImageData(0, 0, W, H);
+
+  // Snapshot COMPLETO del estado: todas las capas + cuál estaba activa
+  const estado = {
+    capaActivaId: capaActivaId,
+    capas: capas.map(capa => ({
+      id:        capa.id,
+      nombre:    capa.nombre,
+      visible:   capa.visible,
+      bloqueada: capa.bloqueada,
+      opacidad:  capa.opacidad,
+      imageData: ctxCapa(capa).getImageData(0, 0, W, H)
+    }))
+  };
+
   history.push(estado);
   if (history.length > MAX_HISTORY) history.shift();
   historyIndex = history.length - 1;
 }
 
+function restaurarEstado(estado) {
+  // Reconstruir capas desde cero con el snapshot
+  capas.length = 0;
+
+  estado.capas.forEach(c => {
+    const capa = crearCapa(c.nombre);
+    capa.id        = c.id;
+    capa.visible   = c.visible;
+    capa.bloqueada = c.bloqueada;
+    capa.opacidad  = c.opacidad;
+
+    // putImageData escribe directamente (ignora alpha/composición) → correcto para restaurar
+    ctxCapa(capa).putImageData(c.imageData, 0, 0);
+  });
+
+  if (capas.length === 0) {
+    const capa = crearCapa("Capa 1");
+    capaActivaId = capa.id;
+  } else {
+    // Si la capa activa ya no existe en el snapshot, usar la última
+    const existe = capas.some(c => c.id === estado.capaActivaId);
+    capaActivaId = existe ? estado.capaActivaId : capas[capas.length - 1].id;
+  }
+
+  recomponer();
+  actualizarPanelCapas();
+}
+
 function undo() {
   if (historyIndex > 0) {
     historyIndex--;
-    ctx.putImageData(history[historyIndex], 0, 0);
+    restaurarEstado(history[historyIndex]);
     mostrarToast("↶ Deshecho");
   } else if (historyIndex === 0) {
-    ctx.putImageData(history[0], 0, 0);
+    restaurarEstado(history[0]);
     mostrarToast("↶ Inicio");
   }
   programarAutoguardado();
@@ -241,7 +283,7 @@ function undo() {
 function redo() {
   if (historyIndex < history.length - 1) {
     historyIndex++;
-    ctx.putImageData(history[historyIndex], 0, 0);
+    restaurarEstado(history[historyIndex]);
     mostrarToast("↷ Rehecho");
   } else {
     mostrarToast("Ya estás al final");
@@ -819,13 +861,8 @@ document.querySelectorAll(".tool").forEach(btn => {
 });
 
 /* ============================================================
-   RESOLUCIÓN LÓGICA FIJA DEL LIENZO  ★ NUEVO
-============================================================
-   W×H son el buffer real en píxeles. Igual en TODOS los
-   dispositivos (desktop y móvil). El tamaño visible lo controla
-   SOLO el CSS del wrapper. Nunca se multiplica por DPR.
+   RESOLUCIÓN LÓGICA FIJA DEL LIENZO
 ============================================================ */
-
 function fijarResolucionLienzo(nuevoW, nuevoH) {
   if (!Number.isFinite(nuevoW) || !Number.isFinite(nuevoH)) return;
   if (nuevoW < 100 || nuevoH < 100) return;
@@ -833,10 +870,8 @@ function fijarResolucionLienzo(nuevoW, nuevoH) {
   if (nuevoW === W && nuevoH === H &&
       canvas.width === nuevoW && canvas.height === nuevoH) return;
 
-  // 1) Reescalar capas existentes al nuevo buffer
   redimensionarCapas(nuevoW, nuevoH);
 
-  // 2) Redimensionar canvas principal y preview
   canvas.width  = nuevoW;
   canvas.height = nuevoH;
   previewCanvas.width  = nuevoW;
@@ -858,7 +893,6 @@ function fijarResolucionLienzo(nuevoW, nuevoH) {
   console.log(`📐 Resolución lógica: ${W}×${H}`);
 }
 
-/* Ajusta SOLO el tamaño visible (CSS) del wrapper. Nunca el buffer. */
 function ajustarTamanoCanvas() {
   if (!estudioMain) return;
 
@@ -878,7 +912,6 @@ function ajustarTamanoCanvas() {
   wrapper.style.height = Math.round(h) + "px";
 }
 
-/* Reajustar CSS cuando cambie el viewport (sin tocar el buffer) */
 window.addEventListener("resize", () => requestAnimationFrame(ajustarTamanoCanvas));
 window.addEventListener("orientationchange", () => setTimeout(ajustarTamanoCanvas, 250));
 
@@ -887,7 +920,6 @@ if (window.visualViewport) {
     () => requestAnimationFrame(ajustarTamanoCanvas));
 }
 
-/* ResizeObserver: mide el contenedor DESPUÉS del reflow */
 if (window.ResizeObserver && estudioMain) {
   const ro = new ResizeObserver(() => requestAnimationFrame(ajustarTamanoCanvas));
   ro.observe(estudioMain);
@@ -913,7 +945,6 @@ renderPaleta();
 document.getElementById("color-actual").style.background = colorActual;
 document.getElementById("color-custom").value = colorActual;
 
-/* Ajuste inicial del wrapper (solo CSS) */
 ajustarTamanoCanvas();
 
 /* ============================================================
@@ -956,6 +987,7 @@ btnNuevaCapa.addEventListener("click", () => {
   setCapaActiva(capa.id);
   actualizarPanelCapas();
   mostrarToast("➕ Capa creada");
+  guardarHistorial();                 // ★
   programarAutoguardado();
   emitirEvento({ tipo: "capa-nueva", capaIdNueva: capa.id, nombre: capa.nombre });
 });
@@ -1008,6 +1040,7 @@ function actualizarPanelCapas() {
       capa.visible = !capa.visible;
       recomponer();
       actualizarPanelCapas();
+      guardarHistorial();               // ★
       programarAutoguardado();
       emitirEvento({ tipo: "capa-visibilidad", capaId: capa.id, visible: capa.visible });
     });
@@ -1019,6 +1052,7 @@ function actualizarPanelCapas() {
       recomponer();
     });
     slider.addEventListener("change", () => {
+      guardarHistorial();               // ★
       programarAutoguardado();
       emitirEvento({ tipo: "capa-opacidad", capaId: capa.id, opacidad: capa.opacidad });
     });
@@ -1082,6 +1116,7 @@ function abrirMenuCapa(capa, itemEl) {
       else if (accion === "bloquear") {
         capa.bloqueada = !capa.bloqueada;
         mostrarToast(capa.bloqueada ? "🔒 Bloqueada" : "🔓 Desbloqueada");
+        guardarHistorial();             // ★
         programarAutoguardado();
       }
       else if (accion === "eliminar") eliminarCapa(capa);
@@ -1105,6 +1140,7 @@ function renombrarCapa(capa, itemEl) {
     const nuevo = input.value.trim() || capa.nombre;
     capa.nombre = nuevo;
     actualizarPanelCapas();
+    guardarHistorial();                 // ★
     programarAutoguardado();
     emitirEvento({ tipo: "capa-renombrar", capaId: capa.id, nombre: nuevo });
   };
@@ -1126,6 +1162,7 @@ function moverCapa(capa, direccion) {
 
   recomponer();
   actualizarPanelCapas();
+  guardarHistorial();                   // ★
   programarAutoguardado();
 }
 
@@ -1150,6 +1187,7 @@ function eliminarCapa(capa) {
 
   recomponer();
   actualizarPanelCapas();
+  guardarHistorial();                   // ★
   mostrarToast("🗑️ Capa eliminada");
   programarAutoguardado();
 }
@@ -1427,15 +1465,12 @@ async function initFirebaseProyecto() {
     if (h1) h1.textContent = "🎨 " + (proyectoFirestore.nombre || "Sin título");
 
     setTimeout(async () => {
-      // 1) Fijar la resolución real del proyecto (una sola vez)
       const ancho = parseInt(proyectoFirestore?.ancho, 10) || 1400;
       const alto  = parseInt(proyectoFirestore?.alto,  10) || 1400;
       fijarResolucionLienzo(ancho, alto);
 
-      // 2) Ajustar solo el tamaño CSS visible
       ajustarTamanoCanvas();
 
-      // 3) Cargar contenido
       if (Array.isArray(proyectoFirestore.capasData) && proyectoFirestore.capasData.length > 0) {
         await cargarCapasDesdeFirestore(proyectoFirestore.capasData);
       } else if (proyectoFirestore.canvasData) {
@@ -1443,9 +1478,10 @@ async function initFirebaseProyecto() {
       }
 
       recomponer();
+      history.length = 0;
+      historyIndex = -1;
       guardarHistorial();
 
-      // 4) Arranca la sincronización colaborativa
       iniciarSyncColaborativa();
     }, 300);
 
@@ -1509,7 +1545,6 @@ async function cargarCapaUnicaDesdeFirestore(canvasData) {
   console.log("📚 1 capa cargada (formato antiguo)");
 }
 
-/* Guardar solo composite + thumbnail */
 async function guardarProyectoEnFirestore(compositeJPEG, thumbnailJPEG) {
   await setDoc(
     doc(fireDb, "parejas", PAREJA_ID, "proyectos", PROYECTO_ID),
@@ -1636,7 +1671,6 @@ initFirebaseProyecto();
 /* ============================================================
    FASE 4 — ZOOM, PAN, DOBLE-TAP Y PANTALLA COMPLETA
 ============================================================ */
-
 let zoom  = 1;
 let panX  = 0;
 let panY  = 0;
@@ -1680,7 +1714,7 @@ function mostrarZoomIndicador() {
 btnResetZoom?.addEventListener("click", resetZoom);
 
 /* ============================================================
-   GESTOS TÁCTILES (móvil) — 2 dedos para zoom/pan
+   GESTOS TÁCTILES (móvil)
 ============================================================ */
 let touchMode      = null;
 let touchStartDist = 0;
@@ -1867,7 +1901,6 @@ aplicarTransform();
 /* ============================================================
    COLABORACIÓN EN TIEMPO REAL
 ============================================================ */
-
 const MI_AUTOR = (() => {
   let id = localStorage.getItem("estudio-autor-id");
   if (!id) {
@@ -1993,6 +2026,7 @@ function aplicarEventoRemoto(ev) {
   }
 
   recomponer();
+  guardarHistorial();                  // ★ el cambio remoto también entra al historial
   mostrarToast("👥 Cambio de la otra persona");
 }
 
@@ -2071,15 +2105,15 @@ function dibujarPresenciaRemota() {
 
   previewCtx.save();
   if (ev.tipo === "trazo") {
-    aplicarTrazoRemoto(previewCtx, ev, capa);   // ★ fix: era aplicarTrazoRemota (typo)
+    aplicarTrazoRemoto(previewCtx, ev, capa);
   } else if (ev.tipo === "forma" && ev.inicio && ev.fin) {
     aplicarFormaRemota(previewCtx, ev, capa);
   }
   previewCtx.restore();
 }
+
 /* ============================================================
-   MOBILE BOTTOM SHEETS — Herramientas / Colores / Ajustes
-   Solo activos en móvil o pantallas táctiles pequeñas.
+   MOBILE BOTTOM SHEETS
 ============================================================ */
 (() => {
   const mq = window.matchMedia(
@@ -2107,7 +2141,6 @@ function dibujarPresenciaRemota() {
   function abrirSheet(sheet) {
     if (!sheet) return;
     cerrarSheets();
-    // rAF para que se aplique el estado inicial antes de animar
     requestAnimationFrame(() => {
       sheet.classList.add("abierto");
       overlay?.classList.add("visible");
@@ -2126,28 +2159,22 @@ function dibujarPresenciaRemota() {
 
   overlay?.addEventListener("click", cerrarSheets);
 
-  // Escape también cierra
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") cerrarSheets();
   });
 
-  // Al elegir una herramienta, cerrar el sheet (solo en móvil)
   document.querySelectorAll(".tool").forEach(btn => {
     btn.addEventListener("click", () => {
       if (esMovil()) {
-        setTimeout(cerrarSheets, 150);   // pequeño delay para ver el feedback visual
+        setTimeout(cerrarSheets, 150);
       }
     });
   });
 
-  // ------------------------------------------------------------
-  // Preview del color en el shortcut "Color"
-  // ------------------------------------------------------------
   function actualizarPreviewColor(hex) {
     if (previewSw && hex) previewSw.style.background = hex;
   }
 
-  // Cuando se toca un swatch
   document.querySelectorAll(".swatch").forEach(sw => {
     sw.addEventListener("click", () => {
       const hex = sw.dataset.color;
@@ -2155,7 +2182,6 @@ function dibujarPresenciaRemota() {
     });
   });
 
-  // Cuando se cambia el color custom (input type="color")
   const colorCustomInput = document.getElementById("color-custom");
   colorCustomInput?.addEventListener("input", (e) => {
     actualizarPreviewColor(e.target.value);
@@ -2164,12 +2190,8 @@ function dibujarPresenciaRemota() {
     actualizarPreviewColor(e.target.value);
   });
 
-  // Estado inicial
   if (colorCustomInput) actualizarPreviewColor(colorCustomInput.value);
 
-  // ------------------------------------------------------------
-  // Cerrar sheets si pasa de móvil a desktop (al rotar/redimensionar)
-  // ------------------------------------------------------------
   mq.addEventListener?.("change", (e) => {
     if (!e.matches) cerrarSheets();
   });
