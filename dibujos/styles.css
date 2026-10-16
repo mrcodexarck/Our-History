@@ -2550,7 +2550,7 @@ html, body {
   width: 100%;
   height: 100%;
   border-radius: 12px;
-  background: #fdfaf3;
+  background: transparent;
   overflow: visible;
   transform-origin: center center;
   transform: translate3d(0, 0, 0) scale(1);
@@ -2561,7 +2561,7 @@ html, body {
   display: block;
   width: 100%;
   height: 100%;
-  background: #fdfaf3;
+  background: transparent;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
