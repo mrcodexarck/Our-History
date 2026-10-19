@@ -35,9 +35,6 @@
       <p id="current-artist">Artista</p>
       <p class="player-dedication" id="current-dedication">Dedicatoria...</p>
     </div>
-    
-    <!-- Contenedor invisible para la API de YouTube -->
-    <div id="youtube-api-player" style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1;"></div>
   </div>
 
   <p class="empty-state" id="empty-state" hidden>
@@ -78,7 +75,13 @@
   </div>
 </div>
 
-<!-- Script de la API de YouTube (Fundamental para que funcione) -->
+<!-- 
+  EL REPRODUCTOR OCULTO DEBE ESTAR AQUÍ (Fuera de contenedores ocultos), 
+  para que YouTube pueda inicializarlo correctamente. 
+-->
+<div id="youtube-api-player" style="position: fixed; top: -9999px; left: -9999px; width: 200px; height: 200px;"></div>
+
+<!-- Cargamos la API de YouTube y LUEGO el script -->
 <script src="https://www.youtube.com/iframe_api"></script>
 <script type="module" src="app.js"></script>
 </body>

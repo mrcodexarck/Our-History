@@ -53,16 +53,18 @@ const currentDedic = document.getElementById("current-dedication");
 
 let currentAudioId = null;
 let isPlaying = false;
-let ytPlayer = null; // Instancia de la API de YouTube
+let ytPlayer = null;
 
 /* ============================================================
-   INICIALIZAR API DE YOUTUBE
+   INICIALIZAR API DE YOUTUBE (A prueba de fallos)
 ============================================================ */
-window.onYouTubeIframeAPIReady = function() {
+function initYtPlayer() {
+  if (ytPlayer) return; // Si ya existe, no hacer nada
+  
   ytPlayer = new YT.Player('youtube-api-player', {
-    height: '1',
-    width: '1',
-    videoId: '', // Empieza vacío
+    height: '200',
+    width: '200',
+    videoId: '',
     playerVars: {
       'autoplay': 1,
       'controls': 0,
@@ -71,10 +73,22 @@ window.onYouTubeIframeAPIReady = function() {
       'modestbranding': 1
     },
     events: {
-      'onStateChange': onPlayerStateChange
+      'onStateChange': onPlayerStateChange,
+      'onError': (e) => {
+        console.error("Error de YouTube:", e.data);
+        alert("El video tiene reproducción restringida. Prueba con otro enlace.");
+      }
     }
   });
-};
+}
+
+// Esta función la llama YouTube automáticamente cuando su API está lista
+window.onYouTubeIframeAPIReady = initYtPlayer;
+
+// Por si acaso la API ya estaba lista antes de que este script se ejecutara
+if (window.YT && window.YT.Player) {
+  initYtPlayer();
+}
 
 // Sincronizar el estado del vinilo con el reproductor real de YouTube
 function onPlayerStateChange(event) {
@@ -107,7 +121,16 @@ function nombreAutor(id) {
 ============================================================ */
 function playSong(song, cardElement) {
   const videoId = getYouTubeId(song.url);
-  if (!videoId || !ytPlayer) return;
+  
+  if (!videoId) {
+    alert("Enlace inválido. No se pudo extraer el ID del video.");
+    return;
+  }
+
+  if (!ytPlayer) {
+    alert("YouTube aún se está cargando. Espera un segundo e intenta de nuevo.");
+    return;
+  }
 
   // Si es la misma canción, hacemos Play/Pause
   if (currentAudioId === videoId) {
@@ -128,7 +151,7 @@ function playSong(song, cardElement) {
   currentArtist.textContent = song.artista;
   currentDedic.textContent = song.dedicatoria ? `"${song.dedicatoria}"` : `Dedicada por ${nombreAutor(song.autor)}`;
 
-  // Cargar y reproducir la nueva canción mediante la API
+  // Cargar y reproducir la nueva canción
   ytPlayer.loadVideoById(videoId);
 
   // Actualizar clases de las tarjetas
