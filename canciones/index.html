@@ -36,14 +36,8 @@
       <p class="player-dedication" id="current-dedication">Dedicatoria...</p>
     </div>
     
-    <!-- IFRAME OCULTO DE YOUTUBE: No lo borres, es el que reproduce la música -->
-    <iframe 
-      id="youtube-iframe" 
-      src="" 
-      frameborder="0" 
-      allow="autoplay; encrypted-media" 
-      style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1;">
-    </iframe>
+    <!-- Contenedor invisible para la API de YouTube -->
+    <div id="youtube-api-player" style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1;"></div>
   </div>
 
   <p class="empty-state" id="empty-state" hidden>
@@ -84,6 +78,8 @@
   </div>
 </div>
 
+<!-- Script de la API de YouTube (Fundamental para que funcione) -->
+<script src="https://www.youtube.com/iframe_api"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

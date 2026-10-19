@@ -50,10 +50,42 @@ const playerVinyl  = document.getElementById("player-vinyl");
 const currentTitle = document.getElementById("current-title");
 const currentArtist= document.getElementById("current-artist");
 const currentDedic = document.getElementById("current-dedication");
-const ytIframe     = document.getElementById("youtube-iframe");
 
 let currentAudioId = null;
 let isPlaying = false;
+let ytPlayer = null; // Instancia de la API de YouTube
+
+/* ============================================================
+   INICIALIZAR API DE YOUTUBE
+============================================================ */
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('youtube-api-player', {
+    height: '1',
+    width: '1',
+    videoId: '', // Empieza vacío
+    playerVars: {
+      'autoplay': 1,
+      'controls': 0,
+      'disablekb': 1,
+      'fs': 0,
+      'modestbranding': 1
+    },
+    events: {
+      'onStateChange': onPlayerStateChange
+    }
+  });
+};
+
+// Sincronizar el estado del vinilo con el reproductor real de YouTube
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    playerVinyl.classList.add("playing");
+    isPlaying = true;
+  } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+    playerVinyl.classList.remove("playing");
+    isPlaying = false;
+  }
+}
 
 /* ============================================================
    HELPERS
@@ -75,39 +107,29 @@ function nombreAutor(id) {
 ============================================================ */
 function playSong(song, cardElement) {
   const videoId = getYouTubeId(song.url);
-  if (!videoId) {
-    alert("El enlace de esta canción no es válido.");
-    return;
-  }
+  if (!videoId || !ytPlayer) return;
 
   // Si es la misma canción, hacemos Play/Pause
   if (currentAudioId === videoId) {
     if (isPlaying) {
-      ytIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-      playerVinyl.classList.remove("playing");
-      isPlaying = false;
+      ytPlayer.pauseVideo();
     } else {
-      ytIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-      playerVinyl.classList.add("playing");
-      isPlaying = true;
+      ytPlayer.playVideo();
     }
     return;
   }
 
   // Si es una canción nueva
   currentAudioId = videoId;
-  isPlaying = true;
-
+  
   // Actualizar UI
   playerCont.hidden = false;
   currentTitle.textContent = song.titulo;
   currentArtist.textContent = song.artista;
   currentDedic.textContent = song.dedicatoria ? `"${song.dedicatoria}"` : `Dedicada por ${nombreAutor(song.autor)}`;
-  
-  playerVinyl.classList.add("playing");
 
-  // Cargar el nuevo video en el iframe oculto
-  ytIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&enablejsapi=1`;
+  // Cargar y reproducir la nueva canción mediante la API
+  ytPlayer.loadVideoById(videoId);
 
   // Actualizar clases de las tarjetas
   document.querySelectorAll(".song-card").forEach(c => c.classList.remove("active"));
