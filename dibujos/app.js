@@ -20,6 +20,12 @@ import {
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
 
+/* ============================================================
+   PARÁMETROS DE URL (MODO EDICIÓN)
+============================================================ */
+const urlParams = new URLSearchParams(window.location.search);
+const fechaUrl = urlParams.get('fecha');
+const hojaUrl  = urlParams.get('hoja');
 
 /* ============================================================
    PERFILES
@@ -52,11 +58,13 @@ function configurarPerfil(id) {
 
 function esMiHoja(tab) { return tab === miTab; }
 
-
 /* ============================================================
    FECHA
 ============================================================ */
 function hoyISO() {
+  // Si venimos del álbum a editar, usamos esa fecha en lugar de la de hoy
+  if (fechaUrl && /^\d{4}-\d{2}-\d{2}$/.test(fechaUrl)) return fechaUrl;
+  
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
@@ -67,7 +75,6 @@ const fechaDiaEl  = document.getElementById("fecha-dia");
 const fechaAnioEl = document.getElementById("fecha-anio");
 if (fechaDiaEl)  fechaDiaEl.textContent  = `${hoy.getDate()} de ${MESES[hoy.getMonth()]}`;
 if (fechaAnioEl) fechaAnioEl.textContent = hoy.getFullYear();
-
 
 /* ============================================================
    CANVAS
@@ -82,7 +89,6 @@ function pintarFondo() {
   ctx.fillStyle = COLOR_FONDO;
   ctx.fillRect(0, 0, W, H);
 }
-
 
 /* ============================================================
    ESTADO
@@ -132,7 +138,6 @@ let mensajeEmily = "";
 let perfilUnsubs = { joan: null, emily: null };
 
 let timeoutThumbnail = null;
-
 
 /* ============================================================
    HELPERS
@@ -319,7 +324,6 @@ function estilosDeTrazo() {
   }
 }
 
-
 /* ============================================================
    CONVERSIONES DE COLOR
 ============================================================ */
@@ -385,7 +389,6 @@ function normalizarHex(hex) {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return null;
   return hex.toLowerCase();
 }
-
 
 /* ============================================================
    DIBUJO
@@ -490,7 +493,6 @@ function drawSelectionOverlay() {
   ctx.restore();
 }
 
-
 /* ============================================================
    FLOOD FILL
 ============================================================ */
@@ -587,7 +589,6 @@ async function guardarRelleno(x, y, hex) {
     scheduleRedraw();
   }
 }
-
 
 /* ============================================================
    POINTER EVENTS, PINCH-ZOOM Y SELECCIÓN
@@ -965,7 +966,6 @@ canvas.addEventListener("lostpointercapture", e => {
   if (e.pointerType === "touch" && touchPointers.has(e.pointerId)) finalizarPuntero(e, true);
 });
 
-
 /* ============================================================
    TABS
 ============================================================ */
@@ -1018,7 +1018,6 @@ function cambiarHoja(nuevaHoja) {
   actualizarBanana();
 }
 
-
 /* ============================================================
    PALETA RÁPIDA (lápices de colores)
 ============================================================ */
@@ -1059,7 +1058,6 @@ function seleccionarColor(hex, btnEl) {
 }
 
 renderLapices();
-
 
 /* ============================================================
    MENÚS DESPLEGABLES — Lápices y Acciones
@@ -1152,7 +1150,6 @@ document.querySelectorAll(".tool-item").forEach(item => {
   });
 });
 
-
 /* ============================================================
    TAMAÑOS
 ============================================================ */
@@ -1163,7 +1160,6 @@ document.querySelectorAll(".tamanos button").forEach(btn => {
       .forEach(b => b.classList.toggle("active", b === btn));
   });
 });
-
 
 /* ============================================================
    DESHACER
@@ -1196,7 +1192,6 @@ document.getElementById("btn-undo")?.addEventListener("click", async () => {
   }
 });
 
-
 /* ============================================================
    LIMPIAR
 ============================================================ */
@@ -1227,7 +1222,6 @@ document.getElementById("btn-clear")?.addEventListener("click", async () => {
   }
 });
 
-
 /* ============================================================
    DRAWER MÓVIL
 ============================================================ */
@@ -1250,7 +1244,6 @@ function cerrarDrawer() {
 btnToolsMobile?.addEventListener("click", abrirDrawer);
 drawerCerrar?.addEventListener("click", cerrarDrawer);
 drawerOverlay?.addEventListener("click", cerrarDrawer);
-
 
 /* ============================================================
    ADMINISTRACIÓN DE CAPAS
@@ -1481,7 +1474,6 @@ document.getElementById("btn-menu-delete-selection")?.addEventListener("click", 
 });
 document.getElementById("zoom-reset")?.addEventListener("click", restablecerVistaCanvas);
 
-
 /* ============================================================
    STATUS
 ============================================================ */
@@ -1499,7 +1491,6 @@ function mostrarGuardado() {
   clearTimeout(ind._timeout);
   ind._timeout = setTimeout(() => ind.classList.remove("visible"), 900);
 }
-
 
 /* ============================================================
    FIREBASE
@@ -1609,7 +1600,6 @@ function suscribirCapas(tab) {
   });
 }
 
-
 /* ============================================================
    ÁLBUM — Guardar thumbnail del dibujo actual
 ============================================================ */
@@ -1642,7 +1632,6 @@ async function guardarThumbnail() {
     console.warn("⚠️ Error guardando thumbnail:", err);
   }
 }
-
 
 /* ============================================================
    PERFILES — Firestore
@@ -1729,7 +1718,6 @@ async function guardarPerfil() {
     setTimeout(() => { btn.disabled = false; btn.textContent = "Guardar"; }, 1500);
   }
 }
-
 
 /* ============================================================
    MENSAJES DEL DÍA (BANANA)
@@ -1820,7 +1808,6 @@ async function guardarMensaje() {
   }
 }
 
-
 /* ============================================================
    PRESENCIA
 ============================================================ */
@@ -1844,7 +1831,6 @@ function iniciarPresencia() {
   presenciaInterval = setInterval(publicarPresencia, 15000);
 }
 
-
 /* ============================================================
    MODAL EDITAR PERFIL
 ============================================================ */
@@ -1862,7 +1848,6 @@ function abrirModalPerfil() {
   overlayEditar.hidden = false;
 }
 function cerrarModalPerfil() { overlayEditar.hidden = true; }
-
 
 /* ============================================================
    SELECTOR DE PERFIL
@@ -1909,7 +1894,6 @@ function pintarTabsConEstado() {
     t.classList.toggle("mi-hoja", n === miTab);
   });
 }
-
 
 /* ============================================================
    SELECTOR DE COLORES estilo Paint
@@ -2183,7 +2167,6 @@ window.addEventListener("resize", () => {
   }
 });
 
-
 /* ============================================================
    BOTÓN "COLOR" — Botón independiente de la barra
 ============================================================ */
@@ -2212,7 +2195,6 @@ document.getElementById("btn-color-picker")?.addEventListener("click", () => {
     mostrarGuardado();
   });
 });
-
 
 /* ============================================================
    EVENT LISTENERS GENERALES
@@ -2244,7 +2226,6 @@ document.getElementById("message-overlay")?.addEventListener("click", e => {
 });
 document.getElementById("message-guardar")?.addEventListener("click", guardarMensaje);
 
-
 /* ============================================================
    INICIAR FIREBASE
 ============================================================ */
@@ -2271,7 +2252,6 @@ async function initFirebase() {
   }
 }
 
-
 /* ============================================================
    ARRANQUE
 ============================================================ */
@@ -2287,18 +2267,28 @@ if (perfilActual && PERFILES[perfilActual]) {
   configurarPerfil(perfilActual);
   actualizarUIconPerfiles();
   pintarTabsConEstado();
-  hojaActual = miTab;
+  
+  // Si venimos del álbum, forzamos la hoja de la URL. Si no, la del perfil.
+  hojaActual = (hojaUrl && (hojaUrl === "1" || hojaUrl === "2")) ? parseInt(hojaUrl) : miTab;
 
   tabsHoja.forEach(t =>
-    t.classList.toggle("active", parseInt(t.dataset.hoja, 10) === miTab)
+    t.classList.toggle("active", parseInt(t.dataset.hoja, 10) === hojaActual)
   );
   ocultarSelectorPerfil();
 } else {
   mostrarSelectorPerfil();
 }
 
-initFirebase();
+// Si estamos en modo edición, cambiamos el botón de volver para que regrese al álbum
+if (fechaUrl) {
+  const backBtn = document.querySelector('.app-header .icon-btn');
+  if (backBtn) backBtn.href = '../album/index.html';
+  
+  // Añadimos un aviso visual en la fecha
+  if (fechaDiaEl) fechaDiaEl.textContent = `Editando: ${fechaDiaEl.textContent}`;
+}
 
+initFirebase();
 
 /* ============================================================
    GUARDAR AL SALIR

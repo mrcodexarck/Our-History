@@ -348,20 +348,19 @@ body {
     padding: 14px 14px 48px;
   }
 }
+
 /* ============================================================
-   BOTÓN ELIMINAR EN CADA TARJETA
+   BOTÓN EDITAR Y ELIMINAR EN CADA TARJETA
 ============================================================ */
+.album-editar,
 .album-eliminar {
   position: absolute;
   top: 18px;
-  right: 18px;
   z-index: 5;
   width: 36px;
   height: 36px;
   border-radius: 50%;
   background: rgba(20, 15, 12, .65);
-  border: 1px solid rgba(232, 138, 122, .5);
-  color: #e88a7a;
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -373,36 +372,64 @@ body {
   -webkit-backdrop-filter: blur(6px);
 }
 
+.album-editar svg,
 .album-eliminar svg {
   width: 16px;
   height: 16px;
 }
 
+/* Botón Editar (Izquierda) */
+.album-editar {
+  right: 62px;
+  border: 1px solid rgba(217, 168, 108, .5);
+  color: #d9a86c;
+}
+.album-card:hover .album-editar {
+  opacity: 1;
+  transform: scale(1);
+}
+.album-editar:hover {
+  background: rgba(217, 168, 108, .9);
+  color: #241c17;
+  border-color: rgba(255, 255, 255, .6);
+}
+
+/* Botón Eliminar (Derecha) */
+.album-eliminar {
+  right: 18px;
+  border: 1px solid rgba(232, 138, 122, .5);
+  color: #e88a7a;
+}
 .album-card:hover .album-eliminar {
   opacity: 1;
   transform: scale(1);
 }
-
 .album-eliminar:hover {
   background: rgba(200, 80, 60, .9);
   color: #fff;
   border-color: rgba(255, 255, 255, .6);
 }
 
+.album-editar:active,
 .album-eliminar:active {
   transform: scale(.92);
 }
 
 /* En móvil y touch, siempre visible */
 @media (hover: none), (pointer: coarse) {
+  .album-editar,
   .album-eliminar {
     opacity: 1;
     transform: scale(1);
     width: 40px;
     height: 40px;
     top: 14px;
-    right: 14px;
   }
+  
+  .album-editar { right: 60px; }
+  .album-eliminar { right: 14px; }
+
+  .album-editar svg,
   .album-eliminar svg {
     width: 18px;
     height: 18px;

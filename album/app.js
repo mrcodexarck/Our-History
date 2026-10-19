@@ -94,6 +94,12 @@ function renderizar() {
         <div class="album-img">
           <img src="${item.imagen}" alt="${fechaFmt}" loading="lazy">
         </div>
+        <button type="button" class="album-editar" aria-label="Editar dibujo" title="Editar dibujo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </button>
         <button type="button" class="album-eliminar" aria-label="Eliminar dibujo" title="Eliminar del álbum">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -109,8 +115,17 @@ function renderizar() {
 
     // Clic en la tarjeta → abrir lightbox
     card.addEventListener("click", (e) => {
-      if (e.target.closest(".album-eliminar")) return; // ignorar si es el botón
+      if (e.target.closest(".album-eliminar") || e.target.closest(".album-editar")) return; 
       abrirLightbox(idx);
+    });
+
+    // Clic en el botón editar
+    const btnEditar = card.querySelector(".album-editar");
+    btnEditar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const hoja = item.hoja || 1;
+      // Redirige al módulo de dibujos pasándole la fecha y la hoja
+      window.location.href = `../dibujos/index.html?fecha=${item.fecha}&hoja=${hoja}`;
     });
 
     // Clic en el botón eliminar
@@ -219,6 +234,7 @@ async function initFirebase() {
 }
 
 initFirebase();
+
 /* ============================================================
    ELIMINAR DEL ÁLBUM
 ============================================================ */
