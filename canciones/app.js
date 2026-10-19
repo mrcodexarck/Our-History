@@ -19,7 +19,7 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
 }
 
 const PERFIL_KEY = "perfil-dibujo";
-let perfilActual = localStorage.getItem(PERFIL_KEY) || "joan"; // Fallback
+let perfilActual = localStorage.getItem(PERFIL_KEY) || "joan";
 
 /* ============================================================
    FIREBASE
@@ -43,21 +43,21 @@ const btnSave      = document.getElementById("btn-save");
 const inputUrl     = document.getElementById("input-url");
 const inputTitle   = document.getElementById("input-title");
 const inputArtist  = document.getElementById("input-artist");
-const inputDedic    = document.getElementById("input-dedication");
+const inputDedic   = document.getElementById("input-dedication");
 
 const playerCont   = document.getElementById("player-container");
 const playerVinyl  = document.getElementById("player-vinyl");
 const currentTitle = document.getElementById("current-title");
 const currentArtist= document.getElementById("current-artist");
 const currentDedic = document.getElementById("current-dedication");
-const ytPlayerDiv  = document.getElementById("youtube-player");
+const ytIframe     = document.getElementById("youtube-iframe");
 
 let currentAudioId = null;
+let isPlaying = false;
 
 /* ============================================================
    HELPERS
 ============================================================ */
-// Extrae el ID de un link de YouTube (soporta watch?v=, youtu.be, shorts)
 function getYouTubeId(url) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = url.match(regExp);
@@ -73,38 +73,45 @@ function nombreAutor(id) {
 /* ============================================================
    REPRODUCIR CANCIÓN
 ============================================================ */
-function playSong(song) {
+function playSong(song, cardElement) {
   const videoId = getYouTubeId(song.url);
-  if (!videoId) return;
+  if (!videoId) {
+    alert("El enlace de esta canción no es válido.");
+    return;
+  }
 
-  // Actualizar UI del reproductor
+  // Si es la misma canción, hacemos Play/Pause
+  if (currentAudioId === videoId) {
+    if (isPlaying) {
+      ytIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+      playerVinyl.classList.remove("playing");
+      isPlaying = false;
+    } else {
+      ytIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+      playerVinyl.classList.add("playing");
+      isPlaying = true;
+    }
+    return;
+  }
+
+  // Si es una canción nueva
+  currentAudioId = videoId;
+  isPlaying = true;
+
+  // Actualizar UI
   playerCont.hidden = false;
   currentTitle.textContent = song.titulo;
   currentArtist.textContent = song.artista;
   currentDedic.textContent = song.dedicatoria ? `"${song.dedicatoria}"` : `Dedicada por ${nombreAutor(song.autor)}`;
   
-  // Animación del vinilo
   playerVinyl.classList.add("playing");
 
-  // Cargar iframe de YouTube si es una canción nueva
-  if (currentAudioId !== videoId) {
-    currentAudioId = videoId;
-    ytPlayerDiv.innerHTML = `
-      <iframe 
-        width="200" height="200" 
-        src="https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}" 
-        title="YouTube player" 
-        frameborder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-        allowfullscreen>
-      </iframe>
-    `;
-  }
+  // Cargar el nuevo video en el iframe oculto
+  ytIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&enablejsapi=1`;
 
-  // Marcar tarjeta como activa
+  // Actualizar clases de las tarjetas
   document.querySelectorAll(".song-card").forEach(c => c.classList.remove("active"));
-  const activeCard = document.getElementById(`card-${song.id}`);
-  if (activeCard) activeCard.classList.add("active");
+  if (cardElement) cardElement.classList.add("active");
 }
 
 /* ============================================================
@@ -141,7 +148,7 @@ function renderSongs(songs) {
       </div>
     `;
 
-    card.addEventListener("click", () => playSong(song));
+    card.addEventListener("click", () => playSong(song, card));
     grid.appendChild(card);
   });
 }
@@ -228,7 +235,6 @@ btnSave.addEventListener("click", async () => {
   }
 });
 
-// Cerrar modal al hacer clic fuera
 modal.addEventListener("click", e => {
   if (e.target === modal) btnClose.click();
 });
