@@ -56,10 +56,10 @@ let isPlaying = false;
 let ytPlayer = null;
 
 /* ============================================================
-   INICIALIZAR API DE YOUTUBE (A prueba de fallos)
+   INICIALIZAR API DE YOUTUBE
 ============================================================ */
 function initYtPlayer() {
-  if (ytPlayer) return; // Si ya existe, no hacer nada
+  if (ytPlayer) return;
   
   ytPlayer = new YT.Player('youtube-api-player', {
     height: '200',
@@ -70,27 +70,29 @@ function initYtPlayer() {
       'controls': 0,
       'disablekb': 1,
       'fs': 0,
-      'modestbranding': 1
+      'modestbranding': 1,
+      'origin': window.location.origin
     },
     events: {
       'onStateChange': onPlayerStateChange,
       'onError': (e) => {
         console.error("Error de YouTube:", e.data);
-        alert("El video tiene reproducción restringida. Prueba con otro enlace.");
+        if (e.data === 150 || e.data === 101) {
+          alert("Este video no se puede reproducir aquí porque su dueño ha desactivado la reproducción externa. Por favor, prueba con otro enlace de YouTube.");
+        } else {
+          alert("Error al reproducir el video. Revisa el enlace o prueba con otro.");
+        }
       }
     }
   });
 }
 
-// Esta función la llama YouTube automáticamente cuando su API está lista
 window.onYouTubeIframeAPIReady = initYtPlayer;
 
-// Por si acaso la API ya estaba lista antes de que este script se ejecutara
 if (window.YT && window.YT.Player) {
   initYtPlayer();
 }
 
-// Sincronizar el estado del vinilo con el reproductor real de YouTube
 function onPlayerStateChange(event) {
   if (event.data === YT.PlayerState.PLAYING) {
     playerVinyl.classList.add("playing");
@@ -105,9 +107,10 @@ function onPlayerStateChange(event) {
    HELPERS
 ============================================================ */
 function getYouTubeId(url) {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  // Expresión regular mejorada para capturar IDs de YouTube y YouTube Music
+  const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|music\.youtube\.com\/watch\?v=)([^"&?\/\s]{11})/i;
   const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  return (match && match[1]) ? match[1] : null;
 }
 
 function nombreAutor(id) {
@@ -249,7 +252,7 @@ btnSave.addEventListener("click", async () => {
 
   const videoId = getYouTubeId(url);
   if (!videoId) {
-    alert("El enlace de YouTube no es válido. Asegúrate de copiar el link correctamente.");
+    alert("El enlace no es válido. Asegúrate de copiar el link de YouTube o YouTube Music correctamente.");
     return;
   }
 

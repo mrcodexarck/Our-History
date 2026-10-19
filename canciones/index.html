@@ -52,7 +52,7 @@
     <h2 class="modal-title">Dedicar una canción</h2>
     
     <label class="field">
-      <span>Enlace de YouTube</span>
+      <span>Enlace de YouTube / YouTube Music</span>
       <input type="url" id="input-url" placeholder="https://youtu.be/..." required>
     </label>
     
@@ -75,10 +75,7 @@
   </div>
 </div>
 
-<!-- 
-  EL REPRODUCTOR OCULTO DEBE ESTAR AQUÍ (Fuera de contenedores ocultos), 
-  para que YouTube pueda inicializarlo correctamente. 
--->
+<!-- Contenedor oculto para la API de YouTube -->
 <div id="youtube-api-player" style="position: fixed; top: -9999px; left: -9999px; width: 200px; height: 200px;"></div>
 
 <!-- Cargamos la API de YouTube y LUEGO el script -->
