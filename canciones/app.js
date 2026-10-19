@@ -12,6 +12,11 @@ import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/1
 import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
 
 /* ============================================================
+   ⚠️ CONFIGURACIÓN: PON TU API KEY DE YOUTUBE AQUÍ
+============================================================ */
+const YOUTUBE_API_KEY = "AIzaSyC-kcMHCkA3TRn2wCHrq4aOTbLOUbIS59E"; 
+
+/* ============================================================
    PROTECCIÓN Y PERFIL
 ============================================================ */
 if (sessionStorage.getItem("acceso-libro") !== "ok") {
@@ -40,10 +45,16 @@ const btnAddSong   = document.getElementById("btn-add-song");
 const btnClose     = document.getElementById("modal-close");
 const btnSave      = document.getElementById("btn-save");
 
-const inputUrl     = document.getElementById("input-url");
-const inputTitle   = document.getElementById("input-title");
-const inputArtist  = document.getElementById("input-artist");
+const inputSearch  = document.getElementById("input-search");
+const btnSearch    = document.getElementById("btn-search");
+const searchResultsDiv = document.getElementById("search-results");
 const inputDedic   = document.getElementById("input-dedication");
+
+const selectedUrl  = document.getElementById("selected-url");
+const selectedTitle= document.getElementById("selected-title");
+const selectedArtist= document.getElementById("selected-artist");
+const selectedSongDisplay = document.getElementById("selected-song-display");
+const selectedSongText= document.getElementById("selected-song-text");
 
 const playerCont   = document.getElementById("player-container");
 const playerVinyl  = document.getElementById("player-vinyl");
@@ -78,9 +89,8 @@ function initYtPlayer() {
       'onError': (e) => {
         console.error("Error de YouTube:", e.data);
         if (e.data === 150 || e.data === 101) {
-          alert("Este video no se puede reproducir aquí porque su dueño ha desactivado la reproducción externa. Por favor, prueba con otro enlace de YouTube.");
-        } else {
-          alert("Error al reproducir el video. Revisa el enlace o prueba con otro.");
+          alert("Este video tiene la reproducción externa bloqueada por su dueño. Prueba con otro enlace.");
+          playerVinyl.classList.remove("playing");
         }
       }
     }
@@ -88,10 +98,7 @@ function initYtPlayer() {
 }
 
 window.onYouTubeIframeAPIReady = initYtPlayer;
-
-if (window.YT && window.YT.Player) {
-  initYtPlayer();
-}
+if (window.YT && window.YT.Player) { initYtPlayer(); }
 
 function onPlayerStateChange(event) {
   if (event.data === YT.PlayerState.PLAYING) {
@@ -107,7 +114,6 @@ function onPlayerStateChange(event) {
    HELPERS
 ============================================================ */
 function getYouTubeId(url) {
-  // Expresión regular mejorada para capturar IDs de YouTube y YouTube Music
   const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|music\.youtube\.com\/watch\?v=)([^"&?\/\s]{11})/i;
   const match = url.match(regExp);
   return (match && match[1]) ? match[1] : null;
@@ -120,44 +126,114 @@ function nombreAutor(id) {
 }
 
 /* ============================================================
+   BUSCADOR AUTOMÁTICO (YouTube API)
+============================================================ */
+btnSearch.addEventListener("click", async () => {
+  const query = inputSearch.value.trim();
+  if (!query) {
+    alert("Escribe el nombre de una canción o artista.");
+    return;
+  }
+
+  if (YOUTUBE_API_KEY === "TU_API_KEY_AQUI") {
+    alert("⚠️ Falta configurar tu API KEY de YouTube en el archivo app.js para poder buscar automáticamente.");
+    return;
+  }
+
+  btnSearch.textContent = "...";
+  btnSearch.disabled = true;
+  searchResultsDiv.style.display = "none";
+
+  try {
+    // El parámetro videoEmbeddable=true garantiza que solo salgan videos que se pueden reproducir en tu app
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&maxResults=5&key=${YOUTUBE_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.items || data.items.length === 0) {
+      alert("No se encontraron resultados reproducibles. Intenta buscar de otra forma.");
+      return;
+    }
+
+    searchResultsDiv.innerHTML = "";
+    searchResultsDiv.style.display = "block";
+
+    data.items.forEach(item => {
+      const videoId = item.id.videoId;
+      const titulo = item.snippet.title;
+      const artista = item.snippet.channelTitle;
+      const thumb = item.snippet.thumbnails.default.url;
+      const fullUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+      const resultDiv = document.createElement("div");
+      resultDiv.className = "search-item";
+      resultDiv.innerHTML = `
+        <img src="${thumb}">
+        <div class="search-item-info">
+          <div class="search-item-title">${titulo}</div>
+          <div class="search-item-artist">${artista}</div>
+        </div>
+      `;
+
+      resultDiv.addEventListener("click", () => {
+        // Llenar campos ocultos
+        selectedUrl.value = fullUrl;
+        selectedTitle.value = titulo;
+        selectedArtist.value = artista;
+
+        // Mostrar selección
+        selectedSongText.textContent = `${titulo} - ${artista}`;
+        selectedSongDisplay.style.display = "block";
+        searchResultsDiv.style.display = "none";
+        inputSearch.value = ""; 
+      });
+
+      searchResultsDiv.appendChild(resultDiv);
+    });
+
+  } catch (err) {
+    console.error("Error en búsqueda:", err);
+    alert("Error de conexión al buscar.");
+  } finally {
+    btnSearch.textContent = "🔍";
+    btnSearch.disabled = false;
+  }
+});
+
+/* ============================================================
    REPRODUCIR CANCIÓN
 ============================================================ */
 function playSong(song, cardElement) {
   const videoId = getYouTubeId(song.url);
   
   if (!videoId) {
-    alert("Enlace inválido. No se pudo extraer el ID del video.");
+    alert("Enlace inválido.");
     return;
   }
 
   if (!ytPlayer) {
-    alert("YouTube aún se está cargando. Espera un segundo e intenta de nuevo.");
+    alert("El reproductor se está cargando. Espera un segundo.");
     return;
   }
 
-  // Si es la misma canción, hacemos Play/Pause
   if (currentAudioId === videoId) {
-    if (isPlaying) {
-      ytPlayer.pauseVideo();
-    } else {
-      ytPlayer.playVideo();
-    }
+    if (isPlaying) ytPlayer.pauseVideo();
+    else ytPlayer.playVideo();
     return;
   }
 
-  // Si es una canción nueva
   currentAudioId = videoId;
   
-  // Actualizar UI
   playerCont.hidden = false;
   currentTitle.textContent = song.titulo;
   currentArtist.textContent = song.artista;
   currentDedic.textContent = song.dedicatoria ? `"${song.dedicatoria}"` : `Dedicada por ${nombreAutor(song.autor)}`;
 
-  // Cargar y reproducir la nueva canción
+  // Poner la portada del video en el vinilo
+  playerVinyl.style.backgroundImage = `url('https://img.youtube.com/vi/${videoId}/hqdefault.jpg')`;
+
   ytPlayer.loadVideoById(videoId);
 
-  // Actualizar clases de las tarjetas
   document.querySelectorAll(".song-card").forEach(c => c.classList.remove("active"));
   if (cardElement) cardElement.classList.add("active");
 }
@@ -202,7 +278,7 @@ function renderSongs(songs) {
 }
 
 /* ============================================================
-   LÓGICA DE FIREBASE
+   FIREBASE LISTENER
 ============================================================ */
 async function initFirebase() {
   try {
@@ -228,31 +304,28 @@ async function initFirebase() {
 ============================================================ */
 btnAddSong.addEventListener("click", () => {
   modal.hidden = false;
-  inputUrl.focus();
+  inputSearch.focus();
 });
 
 btnClose.addEventListener("click", () => {
   modal.hidden = true;
-  inputUrl.value = "";
-  inputTitle.value = "";
-  inputArtist.value = "";
+  inputSearch.value = "";
+  selectedUrl.value = "";
+  selectedTitle.value = "";
+  selectedArtist.value = "";
+  selectedSongDisplay.style.display = "none";
   inputDedic.value = "";
+  searchResultsDiv.style.display = "none";
 });
 
 btnSave.addEventListener("click", async () => {
-  const url = inputUrl.value.trim();
-  const titulo = inputTitle.value.trim();
-  const artista = inputArtist.value.trim();
+  const url = selectedUrl.value;
+  const titulo = selectedTitle.value;
+  const artista = selectedArtist.value;
   const dedicatoria = inputDedic.value.trim();
 
-  if (!url || !titulo || !artista) {
-    alert("Por favor, llena todos los campos obligatorios.");
-    return;
-  }
-
-  const videoId = getYouTubeId(url);
-  if (!videoId) {
-    alert("El enlace no es válido. Asegúrate de copiar el link de YouTube o YouTube Music correctamente.");
+  if (!url) {
+    alert("Por favor, busca y selecciona una canción de la lista.");
     return;
   }
 
@@ -269,10 +342,13 @@ btnSave.addEventListener("click", async () => {
       ts: serverTimestamp()
     });
     
+    // Limpiar formulario y cerrar
     modal.hidden = true;
-    inputUrl.value = "";
-    inputTitle.value = "";
-    inputArtist.value = "";
+    inputSearch.value = "";
+    selectedUrl.value = "";
+    selectedTitle.value = "";
+    selectedArtist.value = "";
+    selectedSongDisplay.style.display = "none";
     inputDedic.value = "";
   } catch (err) {
     console.error("Error guardando canción:", err);

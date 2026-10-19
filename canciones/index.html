@@ -45,26 +45,35 @@
   <div class="music-grid" id="music-grid"></div>
 </main>
 
-<!-- MODAL PARA AÑADIR CANCIÓN -->
+<!-- MODAL PARA AÑADIR CANCIÓN CON BUSCADOR -->
 <div class="modal-overlay" id="modal-overlay" hidden>
   <div class="modal-card">
     <button type="button" class="modal-close" id="modal-close">✕</button>
     <h2 class="modal-title">Dedicar una canción</h2>
     
+    <!-- BUSCADOR -->
     <label class="field">
-      <span>Enlace de YouTube / YouTube Music</span>
-      <input type="url" id="input-url" placeholder="https://youtu.be/..." required>
-    </label>
-    
-    <label class="field">
-      <span>Título de la canción</span>
-      <input type="text" id="input-title" placeholder="Ej: Yellow" required>
+      <span>Buscar canción (YouTube Music / YouTube)</span>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="input-search" placeholder="Ej: Coldplay Yellow" style="flex: 1;">
+        <button type="button" id="btn-search" style="padding: 0 16px; background: #d9a86c; border: none; border-radius: 10px; cursor: pointer; color: #2a1d12; font-weight: bold;">🔍</button>
+      </div>
     </label>
 
-    <label class="field">
-      <span>Artista</span>
-      <input type="text" id="input-artist" placeholder="Ej: Coldplay" required>
-    </label>
+    <!-- RESULTADOS DE BÚSQUEDA -->
+    <div id="search-results" style="display: none; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 10px; margin-bottom: 14px; border: 1px solid rgba(217,168,108,0.2);">
+      <!-- Aquí se inyectan los resultados -->
+    </div>
+
+    <!-- CAMPOS OCULTOS (Se llenan al elegir canción) -->
+    <input type="hidden" id="selected-url">
+    <input type="hidden" id="selected-title">
+    <input type="hidden" id="selected-artist">
+
+    <!-- CANCIÓN SELECCIONADA -->
+    <div id="selected-song-display" style="display: none; text-align: center; margin-bottom: 14px; padding: 10px; background: rgba(217,168,108,0.1); border-radius: 10px; border: 1px dashed #d9a86c;">
+      <span style="font-family: 'Caveat', cursive; color: #f0e2c8; font-size: 1.2rem;" id="selected-song-text">Canción seleccionada</span>
+    </div>
 
     <label class="field">
       <span>Tu dedicatoria (opcional)</span>
@@ -78,7 +87,6 @@
 <!-- Contenedor oculto para la API de YouTube -->
 <div id="youtube-api-player" style="position: fixed; top: -9999px; left: -9999px; width: 200px; height: 200px;"></div>
 
-<!-- Cargamos la API de YouTube y LUEGO el script -->
 <script src="https://www.youtube.com/iframe_api"></script>
 <script type="module" src="app.js"></script>
 </body>
