@@ -1,19 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  serverTimestamp 
+  getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
 
 /* ============================================================
-   ⚠️ CONFIGURACIÓN: PON TU API KEY DE YOUTUBE AQUÍ
+   ⚠️ CONFIGURACIÓN: API KEY DE YOUTUBE
 ============================================================ */
+// Usamos la API Key que tenías en tu código original
 const YOUTUBE_API_KEY = "AIzaSyC-kcMHCkA3TRn2wCHrq4aOTbLOUbIS59E"; 
 
 /* ============================================================
@@ -89,7 +84,7 @@ function initYtPlayer() {
       'onError': (e) => {
         console.error("Error de YouTube:", e.data);
         if (e.data === 150 || e.data === 101) {
-          alert("Este video tiene la reproducción externa bloqueada por su dueño. Prueba con otro enlace.");
+          alert("Este video tiene bloqueos de derechos. Intenta buscarlo de nuevo añadiendo la palabra 'letra' o 'cover'.");
           playerVinyl.classList.remove("playing");
         }
       }
@@ -126,7 +121,7 @@ function nombreAutor(id) {
 }
 
 /* ============================================================
-   BUSCADOR AUTOMÁTICO (YouTube API)
+   BUSCADOR ANTI-BLOQUEOS (YouTube API)
 ============================================================ */
 btnSearch.addEventListener("click", async () => {
   const query = inputSearch.value.trim();
@@ -135,18 +130,15 @@ btnSearch.addEventListener("click", async () => {
     return;
   }
 
-  if (YOUTUBE_API_KEY === "TU_API_KEY_AQUI") {
-    alert("⚠️ Falta configurar tu API KEY de YouTube en el archivo app.js para poder buscar automáticamente.");
-    return;
-  }
-
   btnSearch.textContent = "...";
   btnSearch.disabled = true;
   searchResultsDiv.style.display = "none";
 
   try {
-    // El parámetro videoEmbeddable=true garantiza que solo salgan videos que se pueden reproducir en tu app
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&maxResults=5&key=${YOUTUBE_API_KEY}`;
+    // EL TRUCO: Añadimos "letra audio" a la búsqueda secreta para evadir los videos oficiales bloqueados
+    const searchQuery = query + " letra audio";
+    
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&videoEmbeddable=true&maxResults=5&key=${YOUTUBE_API_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
 
@@ -160,8 +152,9 @@ btnSearch.addEventListener("click", async () => {
 
     data.items.forEach(item => {
       const videoId = item.id.videoId;
-      const titulo = item.snippet.title;
-      const artista = item.snippet.channelTitle;
+      // Quitamos palabras molestas del título como (Official Audio), [Lyrics], etc. para que se vea más limpio
+      let titulo = item.snippet.title.replace(/(&quot;)|(&amp;)|(\[.*?\])|(\(.*?\))/g, "").trim();
+      const artista = item.snippet.channelTitle.replace(" - Topic", "");
       const thumb = item.snippet.thumbnails.default.url;
       const fullUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -176,12 +169,10 @@ btnSearch.addEventListener("click", async () => {
       `;
 
       resultDiv.addEventListener("click", () => {
-        // Llenar campos ocultos
         selectedUrl.value = fullUrl;
         selectedTitle.value = titulo;
         selectedArtist.value = artista;
 
-        // Mostrar selección
         selectedSongText.textContent = `${titulo} - ${artista}`;
         selectedSongDisplay.style.display = "block";
         searchResultsDiv.style.display = "none";
@@ -211,11 +202,12 @@ function playSong(song, cardElement) {
     return;
   }
 
-  if (!ytPlayer) {
-    alert("El reproductor se está cargando. Espera un segundo.");
+  if (!ytPlayer || !ytPlayer.loadVideoById) {
+    alert("El reproductor se está cargando. Espera un segundo e intenta de nuevo.");
     return;
   }
 
+  // Si tocamos la misma canción que ya está sonando, la pausamos/reanudamos
   if (currentAudioId === videoId) {
     if (isPlaying) ytPlayer.pauseVideo();
     else ytPlayer.playVideo();
