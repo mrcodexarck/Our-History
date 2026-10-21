@@ -59,14 +59,16 @@ function configurarPerfil(id) {
 function esMiHoja(tab) { return tab === miTab; }
 
 /* ============================================================
-   FECHA
+   FECHA (CONGELADA AL ABRIR PARA EVITAR CRUCE DE MEDIANOCHE)
 ============================================================ */
-function hoyISO() {
-  // Si venimos del álbum a editar, usamos esa fecha en lugar de la de hoy
+const FECHA_SESION = (function() {
   if (fechaUrl && /^\d{4}-\d{2}-\d{2}$/.test(fechaUrl)) return fechaUrl;
-  
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+})();
+
+function hoyISO() {
+  return FECHA_SESION;
 }
 
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -77,13 +79,27 @@ if (fechaDiaEl)  fechaDiaEl.textContent  = `${hoy.getDate()} de ${MESES[hoy.getM
 if (fechaAnioEl) fechaAnioEl.textContent = hoy.getFullYear();
 
 /* ============================================================
-   CANVAS
+   CANVAS Y CAPA TEMPORAL
 ============================================================ */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const W = canvas.width;
 const H = canvas.height;
 const COLOR_FONDO = "#fdfaf3";
+
+// Canvas temporal para aislar las capas
+let tempLayerCanvas = null;
+let tempLayerCtx = null;
+
+function getTempLayer() {
+  if (!tempLayerCanvas) {
+    tempLayerCanvas = document.createElement("canvas");
+    tempLayerCanvas.width = W;
+    tempLayerCanvas.height = H;
+    tempLayerCtx = tempLayerCanvas.getContext("2d");
+  }
+  return tempLayerCtx;
+}
 
 function pintarFondo() {
   ctx.fillStyle = COLOR_FONDO;
@@ -393,7 +409,7 @@ function normalizarHex(hex) {
 /* ============================================================
    DIBUJO
 ============================================================ */
-function drawStroke(stroke) {
+function drawStroke(stroke, targetCtx = ctx) {
   if (!stroke) return;
 
   if (stroke.type === "fill") {
@@ -403,7 +419,7 @@ function drawStroke(stroke) {
       cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex);
       fillCanvasCache.set(key, cached);
     }
-    if (cached) ctx.drawImage(cached, 0, 0);
+    if (cached) targetCtx.drawImage(cached, 0, 0);
     return;
   }
 
@@ -413,28 +429,35 @@ function drawStroke(stroke) {
   if (!pts || pts.length === 0) return;
 
   const isEraser = stroke.tool === "borrador";
-  const color    = isEraser ? COLOR_FONDO : stroke.color;
-  const size     = stroke.size;
-  const alpha    = stroke.alpha ?? 1;
 
-  ctx.strokeStyle = color;
-  ctx.fillStyle   = color;
-  ctx.lineWidth   = size;
-  ctx.lineCap     = "round";
-  ctx.lineJoin    = "round";
-  ctx.globalAlpha = alpha;
+  targetCtx.save();
+  if (isEraser) {
+    // El borrador se vuelve transparente en lugar de pintar del color del fondo
+    targetCtx.globalCompositeOperation = "destination-out";
+    targetCtx.strokeStyle = "#000";
+    targetCtx.fillStyle = "#000";
+  } else {
+    targetCtx.globalCompositeOperation = "source-over";
+    targetCtx.strokeStyle = stroke.color;
+    targetCtx.fillStyle = stroke.color;
+  }
+
+  targetCtx.lineWidth = stroke.size;
+  targetCtx.lineCap = "round";
+  targetCtx.lineJoin = "round";
+  targetCtx.globalAlpha = stroke.alpha ?? 1;
 
   if (pts.length === 1) {
-    ctx.beginPath();
-    ctx.arc(pts[0].x, pts[0].y, size / 2, 0, Math.PI * 2);
-    ctx.fill();
+    targetCtx.beginPath();
+    targetCtx.arc(pts[0].x, pts[0].y, stroke.size / 2, 0, Math.PI * 2);
+    targetCtx.fill();
   } else {
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
+    targetCtx.beginPath();
+    targetCtx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
+    targetCtx.stroke();
   }
-  ctx.globalAlpha = 1;
+  targetCtx.restore();
 }
 
 function redrawAll() {
@@ -452,16 +475,30 @@ function redrawAll() {
     arr.sort((a, b) => strokeOrderTs(a) - strokeOrderTs(b));
   }
 
+  const tCtx = getTempLayer();
+
   for (const capa of [...capas].reverse()) {
     if (capa.visible === false) continue;
-    (porCapa.get(capa.id) || []).forEach(drawStroke);
+    
+    tCtx.clearRect(0, 0, W, H);
+    (porCapa.get(capa.id) || []).forEach(s => drawStroke(s, tCtx));
+    ctx.drawImage(tCtx.canvas, 0, 0);
   }
+  
   for (const [lid, arr] of porCapa) {
-    if (!ids.has(lid)) arr.forEach(drawStroke);
+    if (!ids.has(lid)) {
+      tCtx.clearRect(0, 0, W, H);
+      arr.forEach(s => drawStroke(s, tCtx));
+      ctx.drawImage(tCtx.canvas, 0, 0);
+    }
   }
+
   if (currentStroke && !capaBloqueada(currentStroke.layerId || capaActiva().id)) {
-    drawStroke(currentStroke);
+    tCtx.clearRect(0, 0, W, H);
+    drawStroke(currentStroke, tCtx);
+    ctx.drawImage(tCtx.canvas, 0, 0);
   }
+
   drawSelectionOverlay();
 }
 
@@ -847,8 +884,17 @@ canvas.addEventListener("pointermove", e => {
   const p = getPos(e);
   const prev = currentStroke.points[currentStroke.points.length - 1];
   currentStroke.points.push(p);
+
+  // Dibujo en tiempo real fluido (se corrige a nivel de capas en redrawAll al soltar)
   const isEraser = currentStroke.tool === "borrador";
-  ctx.strokeStyle = isEraser ? COLOR_FONDO : currentStroke.color;
+  ctx.save();
+  if (isEraser) {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "#000";
+  } else {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = currentStroke.color;
+  }
   ctx.lineWidth = currentStroke.size;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -857,7 +903,8 @@ canvas.addEventListener("pointermove", e => {
   ctx.moveTo(prev.x, prev.y);
   ctx.lineTo(p.x, p.y);
   ctx.stroke();
-  ctx.globalAlpha = 1;
+  ctx.restore();
+  
   drawSelectionOverlay();
   e.preventDefault();
 });
@@ -2268,7 +2315,6 @@ if (perfilActual && PERFILES[perfilActual]) {
   actualizarUIconPerfiles();
   pintarTabsConEstado();
   
-  // Si venimos del álbum, forzamos la hoja de la URL. Si no, la del perfil.
   hojaActual = (hojaUrl && (hojaUrl === "1" || hojaUrl === "2")) ? parseInt(hojaUrl) : miTab;
 
   tabsHoja.forEach(t =>
@@ -2279,12 +2325,10 @@ if (perfilActual && PERFILES[perfilActual]) {
   mostrarSelectorPerfil();
 }
 
-// Si estamos en modo edición, cambiamos el botón de volver para que regrese al álbum
 if (fechaUrl) {
   const backBtn = document.querySelector('.app-header .icon-btn');
   if (backBtn) backBtn.href = '../album/index.html';
   
-  // Añadimos un aviso visual en la fecha
   if (fechaDiaEl) fechaDiaEl.textContent = `Editando: ${fechaDiaEl.textContent}`;
 }
 
