@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#241c17" />
+<title>¿Quién Ama Más?</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="../menu.html" class="icon-btn" aria-label="Volver">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </a>
+  <div class="titulo">
+    <span class="fecha-dia">¿Quién Ama Más?</span>
+    <span class="fecha-anio" id="status-text">Esperando...</span>
+  </div>
+  <button type="button" class="icon-btn" id="btn-reset" title="Reiniciar Juego">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+  </button>
+</header>
+
+<main class="game-container">
+  
+  <div class="battle-arena">
+    <!-- JUGADOR IZQUIERDA -->
+    <div class="player-side">
+      <div class="player-name">🤎 Joan</div>
+      <div class="player-score" id="score-joan">0</div>
+      <div class="hand" id="hand-joan">❔</div>
+    </div>
+
+    <!-- CENTRO (Cuenta regresiva / VS / Resultado) -->
+    <div class="center-zone">
+      <div class="vs-text" id="center-display">VS</div>
+    </div>
+
+    <!-- JUGADOR DERECHA -->
+    <div class="player-side">
+      <div class="player-name">💛 Emily</div>
+      <div class="player-score" id="score-emily">0</div>
+      <div class="hand" id="hand-emily">❔</div>
+    </div>
+  </div>
+
+  <!-- MENSAJES DE ESTADO -->
+  <div class="status-message" id="status-message" hidden></div>
+
+  <!-- CONTROLES (BOTONES) -->
+  <div class="controls" id="controls">
+    <p class="instruction" id="instruction-text">Elige tu jugada:</p>
+    <div class="choices" id="choices-container">
+      <button class="choice-btn" data-choice="piedra">✊</button>
+      <button class="choice-btn" data-choice="papel">✋</button>
+      <button class="choice-btn" data-choice="tijeras">✌️</button>
+    </div>
+  </div>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
