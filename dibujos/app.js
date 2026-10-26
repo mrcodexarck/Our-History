@@ -3,7 +3,7 @@
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore,
+  initializeFirestore,
   collection,
   addDoc,
   deleteDoc,
@@ -82,12 +82,11 @@ if (fechaAnioEl) fechaAnioEl.textContent = hoy.getFullYear();
    CANVAS Y CAPA TEMPORAL
 ============================================================ */
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const W = canvas.width;
 const H = canvas.height;
 const COLOR_FONDO = "#fdfaf3";
 
-// Canvas temporal para aislar las capas
 let tempLayerCanvas = null;
 let tempLayerCtx = null;
 
@@ -96,7 +95,7 @@ function getTempLayer() {
     tempLayerCanvas = document.createElement("canvas");
     tempLayerCanvas.width = W;
     tempLayerCanvas.height = H;
-    tempLayerCtx = tempLayerCanvas.getContext("2d");
+    tempLayerCtx = tempLayerCanvas.getContext("2d", { willReadFrequently: true });
   }
   return tempLayerCtx;
 }
@@ -152,7 +151,6 @@ let mensajeJoan  = "";
 let mensajeEmily = "";
 
 let perfilUnsubs = { joan: null, emily: null };
-
 let timeoutThumbnail = null;
 
 /* ============================================================
@@ -224,7 +222,7 @@ function capaBloqueada(layerId) {
 }
 
 function actualizarVistaCanvas() {
-  if (canvasSurface) canvasSurface.style.transform = `translate3d(${canvasView.x}px, ${canvasView.y}px, 0) scale(${canvasView.scale})`;
+  if (canvasSurface) canvasSurface.style.transform = `translate(${canvasView.x}px, ${canvasView.y}px) scale(${canvasView.scale})`;
   if (zoomValueEl) zoomValueEl.textContent = `${Math.round(canvasView.scale * 100)}%`;
 }
 
@@ -355,11 +353,7 @@ function hsvToRgb(h, s, v) {
   else if (h < 240) { g = x; b = c; }
   else if (h < 300) { r = x; b = c; }
   else              { r = c; b = x; }
-  return {
-    r: Math.round((r + m) * 255),
-    g: Math.round((g + m) * 255),
-    b: Math.round((b + m) * 255)
-  };
+  return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
 }
 
 function rgbToHsv(r, g, b) {
@@ -388,11 +382,7 @@ function rgbToHex(r, g, b) {
 function hexToRgb(hex) {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!m) return null;
-  return {
-    r: parseInt(m[1], 16),
-    g: parseInt(m[2], 16),
-    b: parseInt(m[3], 16)
-  };
+  return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
 }
 
 function normalizarHex(hex) {
@@ -416,7 +406,8 @@ function drawStroke(stroke, targetCtx = ctx) {
     const key = stroke.clientId || stroke.id;
     let cached = fillCanvasCache.get(key);
     if (cached === undefined) {
-      cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex);
+      // 🛠️ FIX CRÍTICO: Pasamos "targetCtx" para que lea los bordes del lienzo donde se está dibujando
+      cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex, targetCtx);
       fillCanvasCache.set(key, cached);
     }
     if (cached) targetCtx.drawImage(cached, 0, 0);
@@ -432,7 +423,6 @@ function drawStroke(stroke, targetCtx = ctx) {
 
   targetCtx.save();
   if (isEraser) {
-    // El borrador se vuelve transparente en lugar de pintar del color del fondo
     targetCtx.globalCompositeOperation = "destination-out";
     targetCtx.strokeStyle = "#000";
     targetCtx.fillStyle = "#000";
@@ -531,12 +521,13 @@ function drawSelectionOverlay() {
 }
 
 /* ============================================================
-   FLOOD FILL
+   FLOOD FILL (BOTE DE PINTURA)
 ============================================================ */
-function floodFillToCanvas(startX, startY, fillColorHex) {
+function floodFillToCanvas(startX, startY, fillColorHex, sourceCtx = ctx) {
   if (startX < 0 || startY < 0 || startX >= W || startY >= H) return null;
 
-  const imgData = ctx.getImageData(0, 0, W, H);
+  // 🛠️ FIX: Leemos desde el lienzo fuente (puede ser el temporal o el principal)
+  const imgData = sourceCtx.getImageData(0, 0, W, H);
   const src = imgData.data;
 
   const idx = (startY * W + startX) * 4;
@@ -589,7 +580,8 @@ async function guardarRelleno(x, y, hex) {
   const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
   const localId = "fill-" + clientId;
 
-  const fillCanvas = floodFillToCanvas(x, y, hex);
+  // Aquí lee del ctx principal, que tiene todos los trazos ya dibujados
+  const fillCanvas = floodFillToCanvas(x, y, hex, ctx);
   if (!fillCanvas) return;
   fillCanvasCache.set(clientId, fillCanvas);
 
@@ -776,6 +768,11 @@ function actualizarSeleccionArrastrada(point) {
 
 async function guardarTrazoModificado(state) {
   if (!state?.changed) return;
+  
+  // 🛠️ FIX: Al mover o redimensionar un trazo, limpiamos la caché de rellenos
+  // para que los colores se adapten al nuevo espacio.
+  fillCanvasCache.clear();
+
   const stroke = localStrokes.find(s => s.id === state.original.id);
   if (!stroke) return;
   const patch = { layerId: capaIdDeTrazo(stroke) };
@@ -805,6 +802,10 @@ async function guardarTrazoModificado(state) {
 async function eliminarSeleccion() {
   const selected = localStrokes.find(s => s.id === selectedStrokeId);
   if (!selected || capaBloqueada(capaIdDeTrazo(selected))) return;
+  
+  // 🛠️ FIX: Si borramos un trazo, cualquier relleno pudo haber cambiado su forma, limpiamos caché
+  if (selected.type !== "fill") fillCanvasCache.clear();
+
   if (String(selected.id).startsWith("local-") || String(selected.id).startsWith("fill-") || !firebaseListo || !strokesRefs[hojaActual]) {
     localStrokes = localStrokes.filter(s => s.id !== selected.id);
     if (selected.type === "fill") fillCanvasCache.delete(selected.clientId || selected.id);
@@ -885,7 +886,6 @@ canvas.addEventListener("pointermove", e => {
   const prev = currentStroke.points[currentStroke.points.length - 1];
   currentStroke.points.push(p);
 
-  // Dibujo en tiempo real fluido (se corrige a nivel de capas en redrawAll al soltar)
   const isEraser = currentStroke.tool === "borrador";
   ctx.save();
   if (isEraser) {
@@ -1050,6 +1050,7 @@ function cambiarHoja(nuevaHoja) {
 
   localStrokes = [];
   currentStroke = null;
+  fillCanvasCache.clear();
   actualizarUISeleccion();
   renderLayersPanel();
 
@@ -1223,6 +1224,7 @@ document.getElementById("btn-undo")?.addEventListener("click", async () => {
   if (String(ultimo.id).startsWith("local-") || String(ultimo.id).startsWith("fill-")) {
     localStrokes = localStrokes.filter(s => s.id !== ultimo.id);
     if (ultimo.type === "fill") fillCanvasCache.delete(ultimo.clientId || ultimo.id);
+    else fillCanvasCache.clear(); // Por si deshacemos un trazo que era límite
     scheduleRedraw();
     mostrarGuardado();
     return;
@@ -1232,6 +1234,7 @@ document.getElementById("btn-undo")?.addEventListener("click", async () => {
   try {
     await deleteDoc(doc(strokesRefs[hojaActual], ultimo.id));
     if (ultimo.type === "fill") fillCanvasCache.delete(ultimo.clientId || ultimo.id);
+    else fillCanvasCache.clear();
     mostrarGuardado();
     programarGuardarThumbnail(500);
   } catch (err) {
@@ -1253,6 +1256,7 @@ document.getElementById("btn-clear")?.addEventListener("click", async () => {
   scheduleRedraw();
 
   if (!firebaseListo || !strokesRefs[hojaActual]) {
+    mostrarAviso("Borrado local. Conéctate a internet para sincronizar.");
     programarGuardarThumbnail(500);
     return;
   }
@@ -1543,7 +1547,10 @@ function mostrarGuardado() {
    FIREBASE
 ============================================================ */
 const app  = initializeApp(FIREBASE_CONFIG);
-const db   = getFirestore(app);
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: true
+});
 const auth = getAuth(app);
 
 function suscribirHoja(tab) {

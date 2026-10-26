@@ -3,7 +3,7 @@
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore,
+  initializeFirestore, // 👈 Añadido para forzar Long Polling
   collection,
   onSnapshot,
   doc,
@@ -23,7 +23,14 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
    FIREBASE
 ============================================================ */
 const app  = initializeApp(FIREBASE_CONFIG);
-const db   = getFirestore(app);
+
+// 🔥 FIX CRÍTICO: Forzar Long Polling evita los errores 404 (WebChannel) 
+// que impiden que el álbum cargue las fotos en redes móviles o modo incógnito.
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: true
+});
+
 const auth = getAuth(app);
 
 /* ============================================================
@@ -53,9 +60,9 @@ const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto"
    HELPERS
 ============================================================ */
 function formatearFecha(fechaISO) {
-  // fechaISO: "2026-10-06"
-  if (!fechaISO) return "";
+  if (!fechaISO) return "Fecha desconocida";
   const [y, m, d] = fechaISO.split("-").map(Number);
+  if (!y || !m || !d || m < 1 || m > 12) return fechaISO; // Fallback seguro
   return `${d} de ${MESES[m - 1]} ${y}`;
 }
 
@@ -72,27 +79,33 @@ function nombreAutor(id) {
 function renderizar() {
   feed.innerHTML = "";
 
-  if (items.length === 0) {
+  // Filtramos solo los documentos que realmente tengan una imagen guardada
+  const itemsValidos = items.filter(i => i && i.imagen);
+
+  if (itemsValidos.length === 0) {
     vacio.hidden = false;
     contador.textContent = "0 dibujos";
     return;
   }
   vacio.hidden = true;
-  contador.textContent = `${items.length} ${items.length === 1 ? "dibujo" : "dibujos"}`;
+  contador.textContent = `${itemsValidos.length} ${itemsValidos.length === 1 ? "dibujo" : "dibujos"}`;
 
-  items.forEach((item, idx) => {
+  itemsValidos.forEach((item, idx) => {
     const card = document.createElement("div");
     card.className = "album-card";
     card.style.animationDelay = (idx * 0.04) + "s";
 
-    const fechaFmt = formatearFecha(item.fecha);
+    // Fallback de fecha: si item.fecha no existe, usamos los primeros 10 caracteres del ID (YYYY-MM-DD)
+    const fechaSegura = item.fecha || item.id.substring(0, 10);
+    const fechaFmt = formatearFecha(fechaSegura);
+    
     const esHoja1 = item.hoja === 1;
     const labelHoja = esHoja1 ? "Hoja 1" : "Hoja 2";
 
     card.innerHTML = `
       <div class="album-marco">
         <div class="album-img">
-          <img src="${item.imagen}" alt="${fechaFmt}" loading="lazy">
+          <img src="${item.imagen}" alt="Dibujo del ${fechaFmt}" loading="lazy">
         </div>
         <button type="button" class="album-editar" aria-label="Editar dibujo" title="Editar dibujo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -124,15 +137,15 @@ function renderizar() {
     btnEditar.addEventListener("click", (e) => {
       e.stopPropagation();
       const hoja = item.hoja || 1;
-      // Redirige al módulo de dibujos pasándole la fecha y la hoja
-      window.location.href = `../dibujos/index.html?fecha=${item.fecha}&hoja=${hoja}`;
+      // Redirige al módulo de dibujos pasándole la fecha y la hoja correctas
+      window.location.href = `../dibujos/index.html?fecha=${fechaSegura}&hoja=${hoja}`;
     });
 
     // Clic en el botón eliminar
     const btnEliminar = card.querySelector(".album-eliminar");
     btnEliminar.addEventListener("click", (e) => {
       e.stopPropagation();
-      eliminarDelAlbum(item, btnEliminar);
+      eliminarDelAlbum(item, btnEliminar, fechaFmt, labelHoja);
     });
 
     feed.appendChild(card);
@@ -143,7 +156,8 @@ function renderizar() {
    LIGHTBOX
 ============================================================ */
 function abrirLightbox(idx) {
-  if (idx < 0 || idx >= items.length) return;
+  const itemsValidos = items.filter(i => i && i.imagen);
+  if (idx < 0 || idx >= itemsValidos.length) return;
   idxActual = idx;
   actualizarLightbox();
   lightbox.hidden = false;
@@ -156,26 +170,35 @@ function cerrarLightbox() {
 }
 
 function actualizarLightbox() {
-  const item = items[idxActual];
-  if (!item) return;
+  const itemsValidos = items.filter(i => i && i.imagen);
+  const item = itemsValidos[idxActual];
+  
+  // 🛡️ Seguridad: Si el item ya no existe (porque se borró), cerramos el lightbox
+  if (!item) {
+    cerrarLightbox();
+    return;
+  }
 
   lbImg.src = item.imagen;
-  lbFecha.textContent = formatearFecha(item.fecha);
+  
+  const fechaSegura = item.fecha || item.id.substring(0, 10);
+  lbFecha.textContent = formatearFecha(fechaSegura);
   lbAutor.textContent = nombreAutor(item.autor);
 
   lbPrev.disabled = idxActual === 0;
-  lbNext.disabled = idxActual === items.length - 1;
+  lbNext.disabled = idxActual === itemsValidos.length - 1;
 }
 
 function irA(delta) {
+  const itemsValidos = items.filter(i => i && i.imagen);
   const nuevo = idxActual + delta;
-  if (nuevo < 0 || nuevo >= items.length) return;
+  if (nuevo < 0 || nuevo >= itemsValidos.length) return;
   idxActual = nuevo;
   actualizarLightbox();
 }
 
 /* ============================================================
-   EVENT LISTENERS
+   EVENT LISTENERS (LIGHTBOX)
 ============================================================ */
 lbCerrar.addEventListener("click", cerrarLightbox);
 lightbox.addEventListener("click", e => {
@@ -213,6 +236,7 @@ async function initFirebase() {
     const ref = collection(db, "parejas", PAREJA_ID, "album");
 
     onSnapshot(ref, snap => {
+      // Extraemos y filtramos para evitar nulos
       const nuevos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Ordenar por ID (que es "YYYY-MM-DD-N") descendente:
@@ -225,11 +249,13 @@ async function initFirebase() {
     }, err => {
       console.error("❌ Listener error:", err);
       vacio.hidden = false;
-      vacio.textContent = "No se pudieron cargar los dibujos 😢";
+      vacio.textContent = "No se pudieron cargar los dibujos 😢. Revisa tu conexión.";
     });
 
   } catch (err) {
-    console.error("❌ Error Firebase:", err);
+    console.error("❌ Error Firebase Auth:", err);
+    vacio.hidden = false;
+    vacio.textContent = "Error de conexión con la base de datos.";
   }
 }
 
@@ -238,10 +264,7 @@ initFirebase();
 /* ============================================================
    ELIMINAR DEL ÁLBUM
 ============================================================ */
-async function eliminarDelAlbum(item, btnEl) {
-  const fechaFmt = formatearFecha(item.fecha);
-  const labelHoja = item.hoja === 1 ? "Hoja 1" : "Hoja 2";
-
+async function eliminarDelAlbum(item, btnEl, fechaFmt, labelHoja) {
   const confirmar = confirm(
     `¿Eliminar este dibujo del álbum?\n\n` +
     `📅 ${fechaFmt}\n` +
