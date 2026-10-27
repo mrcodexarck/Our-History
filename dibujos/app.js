@@ -89,8 +89,6 @@ const COLOR_FONDO = "#fdfaf3";
 
 let tempLayerCanvas = null;
 let tempLayerCtx = null;
-
-// NUEVO: Lienzo temporal para mezclar capas al calcular rellenos
 let compLayerCanvas = null;
 let compLayerCtx = null;
 
@@ -422,7 +420,6 @@ function drawStroke(stroke, targetCtx = ctx, sourceCtx = null) {
     const key = stroke.clientId || stroke.id;
     let cached = fillCanvasCache.get(key);
     if (cached === undefined) {
-      // NUEVO: Usa el lienzo combinado si se proporciona, si no, usa el de destino
       const fillSource = sourceCtx || targetCtx;
       cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex, fillSource);
       if (fillCanvasCache.size > MAX_FILL_CACHE) {
@@ -431,7 +428,10 @@ function drawStroke(stroke, targetCtx = ctx, sourceCtx = null) {
       }
       fillCanvasCache.set(key, cached);
     }
-    if (cached) targetCtx.drawImage(cached, 0, 0);
+    // Verificamos que sea un canvas válido antes de dibujar
+    if (cached instanceof HTMLCanvasElement) {
+      targetCtx.drawImage(cached, 0, 0);
+    }
     return;
   }
 
@@ -495,7 +495,7 @@ function redrawAll() {
   }
 
   const tCtx = getTempLayer();
-  const cCtx = getCompLayer(); // Lienzo auxiliar para calcular rellenos
+  const cCtx = getCompLayer(); 
 
   for (const capa of [...capas].reverse()) {
     if (capa.visible === false) continue;
@@ -504,9 +504,8 @@ function redrawAll() {
     
     (porCapa.get(capa.id) || []).forEach(s => {
       if (s.type === "fill") {
-        // NUEVO: Fusiona las capas de abajo y la capa actual para calcular el relleno con precisión
         cCtx.clearRect(0, 0, W, H);
-        cCtx.drawImage(ctx, 0, 0); 
+        cCtx.drawImage(canvas, 0, 0); // 🔥 USAMOS LA VARIABLE DIRECTA DEL LIENZO
         cCtx.drawImage(tCtx.canvas, 0, 0); 
         drawStroke(s, tCtx, cCtx);
       } else {
@@ -523,7 +522,7 @@ function redrawAll() {
       arr.forEach(s => {
         if (s.type === "fill") {
           cCtx.clearRect(0, 0, W, H);
-          cCtx.drawImage(ctx, 0, 0);
+          cCtx.drawImage(canvas, 0, 0); // 🔥 USAMOS LA VARIABLE DIRECTA
           cCtx.drawImage(tCtx.canvas, 0, 0);
           drawStroke(s, tCtx, cCtx);
         } else {
@@ -1614,7 +1613,7 @@ function mostrarGuardado() {
 }
 
 /* ============================================================
-   FIREBASE (RESTAURADO A LO ESTÁNDAR)
+   FIREBASE
 ============================================================ */
 const app  = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(app);
