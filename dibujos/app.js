@@ -3,9 +3,7 @@
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  getFirestore,
   collection,
   addDoc,
   deleteDoc,
@@ -61,7 +59,7 @@ function configurarPerfil(id) {
 function esMiHoja(tab) { return tab === miTab; }
 
 /* ============================================================
-   FECHA
+   FECHA (CONGELADA AL ABRIR PARA EVITAR CRUCE DE MEDIANOCHE)
 ============================================================ */
 const FECHA_SESION = (function() {
   if (fechaUrl && /^\d{4}-\d{2}-\d{2}$/.test(fechaUrl)) return fechaUrl;
@@ -1578,24 +1576,10 @@ function mostrarGuardado() {
 }
 
 /* ============================================================
-   🔥 FIREBASE CORREGIDO (AQUÍ ESTABA EL ERROR)
+   FIREBASE (RESTAURADO A LO ESTÁNDAR)
 ============================================================ */
-const app = initializeApp(FIREBASE_CONFIG);
-
-let db;
-try {
-  // Corrección: NO se pueden usar experimentalForceLongPolling y experimentalAutoDetectLongPolling juntos.
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-    experimentalForceLongPolling: true 
-  });
-} catch (e) {
-  console.warn("Modo offline no disponible. Usando caché en memoria:", e);
-  db = initializeFirestore(app, {
-    experimentalForceLongPolling: true
-  });
-}
-
+const app  = initializeApp(FIREBASE_CONFIG);
+const db   = getFirestore(app);
 const auth = getAuth(app);
 
 function suscribirHoja(tab) {

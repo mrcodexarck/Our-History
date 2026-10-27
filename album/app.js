@@ -3,9 +3,7 @@
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  getFirestore,
   collection,
   onSnapshot,
   doc,
@@ -22,23 +20,10 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
 }
 
 /* ============================================================
-   🔥 FIREBASE CORREGIDO
+   FIREBASE (RESTAURADO A LO ESTÁNDAR)
 ============================================================ */
-const app = initializeApp(FIREBASE_CONFIG);
-
-let db;
-try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-    experimentalForceLongPolling: true
-  });
-} catch (e) {
-  console.warn("Modo offline no disponible. Usando caché en memoria:", e);
-  db = initializeFirestore(app, {
-    experimentalForceLongPolling: true
-  });
-}
-
+const app  = initializeApp(FIREBASE_CONFIG);
+const db   = getFirestore(app);
 const auth = getAuth(app);
 
 /* ============================================================
