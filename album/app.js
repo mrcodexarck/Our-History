@@ -3,7 +3,9 @@
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  initializeFirestore, // 👈 Añadido para forzar Long Polling
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   onSnapshot,
   doc,
@@ -20,16 +22,22 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
 }
 
 /* ============================================================
-   FIREBASE
+   🔥 FIREBASE CORREGIDO
 ============================================================ */
-const app  = initializeApp(FIREBASE_CONFIG);
+const app = initializeApp(FIREBASE_CONFIG);
 
-// 🔥 FIX CRÍTICO: Forzar Long Polling evita los errores 404 (WebChannel) 
-// que impiden que el álbum cargue las fotos en redes móviles o modo incógnito.
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: true
-});
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    experimentalForceLongPolling: true
+  });
+} catch (e) {
+  console.warn("Modo offline no disponible. Usando caché en memoria:", e);
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  });
+}
 
 const auth = getAuth(app);
 
@@ -51,7 +59,7 @@ const lbNext     = document.getElementById("lb-next");
 /* ============================================================
    ESTADO
 ============================================================ */
-let items = [];       // array de { id, imagen, fecha, hoja, autor, ... }
+let items = [];
 let idxActual = 0;
 
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -62,7 +70,7 @@ const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto"
 function formatearFecha(fechaISO) {
   if (!fechaISO) return "Fecha desconocida";
   const [y, m, d] = fechaISO.split("-").map(Number);
-  if (!y || !m || !d || m < 1 || m > 12) return fechaISO; // Fallback seguro
+  if (!y || !m || !d || m < 1 || m > 12) return fechaISO;
   return `${d} de ${MESES[m - 1]} ${y}`;
 }
 
@@ -74,12 +82,10 @@ function nombreAutor(id) {
 
 /* ============================================================
    RENDERIZAR FEED
-   Orden: más NUEVO arriba, más VIEJO abajo
 ============================================================ */
 function renderizar() {
   feed.innerHTML = "";
 
-  // Filtramos solo los documentos que realmente tengan una imagen guardada
   const itemsValidos = items.filter(i => i && i.imagen);
 
   if (itemsValidos.length === 0) {
@@ -95,7 +101,6 @@ function renderizar() {
     card.className = "album-card";
     card.style.animationDelay = (idx * 0.04) + "s";
 
-    // Fallback de fecha: si item.fecha no existe, usamos los primeros 10 caracteres del ID (YYYY-MM-DD)
     const fechaSegura = item.fecha || item.id.substring(0, 10);
     const fechaFmt = formatearFecha(fechaSegura);
     
@@ -126,22 +131,18 @@ function renderizar() {
       </div>
     `;
 
-    // Clic en la tarjeta → abrir lightbox
     card.addEventListener("click", (e) => {
       if (e.target.closest(".album-eliminar") || e.target.closest(".album-editar")) return; 
       abrirLightbox(idx);
     });
 
-    // Clic en el botón editar
     const btnEditar = card.querySelector(".album-editar");
     btnEditar.addEventListener("click", (e) => {
       e.stopPropagation();
       const hoja = item.hoja || 1;
-      // Redirige al módulo de dibujos pasándole la fecha y la hoja correctas
       window.location.href = `../dibujos/index.html?fecha=${fechaSegura}&hoja=${hoja}`;
     });
 
-    // Clic en el botón eliminar
     const btnEliminar = card.querySelector(".album-eliminar");
     btnEliminar.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -173,7 +174,6 @@ function actualizarLightbox() {
   const itemsValidos = items.filter(i => i && i.imagen);
   const item = itemsValidos[idxActual];
   
-  // 🛡️ Seguridad: Si el item ya no existe (porque se borró), cerramos el lightbox
   if (!item) {
     cerrarLightbox();
     return;
@@ -214,7 +214,6 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight") irA(+1);
 });
 
-// Swipe en móvil dentro del lightbox
 let lbX0 = null;
 lightbox.addEventListener("touchstart", e => {
   lbX0 = e.touches[0].clientX;
@@ -236,11 +235,8 @@ async function initFirebase() {
     const ref = collection(db, "parejas", PAREJA_ID, "album");
 
     onSnapshot(ref, snap => {
-      // Extraemos y filtramos para evitar nulos
       const nuevos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Ordenar por ID (que es "YYYY-MM-DD-N") descendente:
-      // el más nuevo primero (arriba), el más viejo al final (abajo)
       nuevos.sort((a, b) => b.id.localeCompare(a.id));
 
       items = nuevos;

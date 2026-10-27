@@ -4,6 +4,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   addDoc,
   deleteDoc,
@@ -59,7 +61,7 @@ function configurarPerfil(id) {
 function esMiHoja(tab) { return tab === miTab; }
 
 /* ============================================================
-   FECHA (CONGELADA AL ABRIR PARA EVITAR CRUCE DE MEDIANOCHE)
+   FECHA
 ============================================================ */
 const FECHA_SESION = (function() {
   if (fechaUrl && /^\d{4}-\d{2}-\d{2}$/.test(fechaUrl)) return fechaUrl;
@@ -136,11 +138,13 @@ let pendingBucketTap = null;
 const touchPointers = new Map();
 let gestureActive = false;
 let gestureStart = null;
+let lastGestureEndTime = 0; 
 const canvasView = { scale: 1, x: 0, y: 0 };
 const canvasSurface = document.getElementById("canvas-surface");
 const canvasWrapper = document.getElementById("canvas-wrapper");
 const zoomValueEl = document.getElementById("zoom-value");
 
+const MAX_FILL_CACHE = 20; 
 let fillCanvasCache = new Map();
 let layersPanelSignature = "";
 let lastThumbnailTs = 0;
@@ -406,8 +410,11 @@ function drawStroke(stroke, targetCtx = ctx) {
     const key = stroke.clientId || stroke.id;
     let cached = fillCanvasCache.get(key);
     if (cached === undefined) {
-      // 🛠️ FIX CRÍTICO: Pasamos "targetCtx" para que lea los bordes del lienzo donde se está dibujando
       cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex, targetCtx);
+      if (fillCanvasCache.size > MAX_FILL_CACHE) {
+        const firstKey = fillCanvasCache.keys().next().value;
+        fillCanvasCache.delete(firstKey);
+      }
       fillCanvasCache.set(key, cached);
     }
     if (cached) targetCtx.drawImage(cached, 0, 0);
@@ -444,7 +451,15 @@ function drawStroke(stroke, targetCtx = ctx) {
   } else {
     targetCtx.beginPath();
     targetCtx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) targetCtx.lineTo(pts[i].x, pts[i].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const xc = (pts[i].x + pts[i + 1].x) / 2;
+      const yc = (pts[i].y + pts[i + 1].y) / 2;
+      targetCtx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+    }
+    if (pts.length > 1) {
+      const last = pts[pts.length - 1];
+      targetCtx.lineTo(last.x, last.y);
+    }
     targetCtx.stroke();
   }
   targetCtx.restore();
@@ -526,7 +541,6 @@ function drawSelectionOverlay() {
 function floodFillToCanvas(startX, startY, fillColorHex, sourceCtx = ctx) {
   if (startX < 0 || startY < 0 || startX >= W || startY >= H) return null;
 
-  // 🛠️ FIX: Leemos desde el lienzo fuente (puede ser el temporal o el principal)
   const imgData = sourceCtx.getImageData(0, 0, W, H);
   const src = imgData.data;
 
@@ -580,9 +594,13 @@ async function guardarRelleno(x, y, hex) {
   const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
   const localId = "fill-" + clientId;
 
-  // Aquí lee del ctx principal, que tiene todos los trazos ya dibujados
   const fillCanvas = floodFillToCanvas(x, y, hex, ctx);
   if (!fillCanvas) return;
+  
+  if (fillCanvasCache.size > MAX_FILL_CACHE) {
+    const firstKey = fillCanvasCache.keys().next().value;
+    fillCanvasCache.delete(firstKey);
+  }
   fillCanvasCache.set(clientId, fillCanvas);
 
   const localStroke = {
@@ -620,7 +638,7 @@ async function guardarRelleno(x, y, hex) {
 }
 
 /* ============================================================
-   POINTER EVENTS, PINCH-ZOOM Y SELECCIÓN
+   POINTER EVENTS
 ============================================================ */
 function cancelarInteraccionParaGesto() {
   if (selectionDragState) {
@@ -768,9 +786,6 @@ function actualizarSeleccionArrastrada(point) {
 
 async function guardarTrazoModificado(state) {
   if (!state?.changed) return;
-  
-  // 🛠️ FIX: Al mover o redimensionar un trazo, limpiamos la caché de rellenos
-  // para que los colores se adapten al nuevo espacio.
   fillCanvasCache.clear();
 
   const stroke = localStrokes.find(s => s.id === state.original.id);
@@ -803,7 +818,6 @@ async function eliminarSeleccion() {
   const selected = localStrokes.find(s => s.id === selectedStrokeId);
   if (!selected || capaBloqueada(capaIdDeTrazo(selected))) return;
   
-  // 🛠️ FIX: Si borramos un trazo, cualquier relleno pudo haber cambiado su forma, limpiamos caché
   if (selected.type !== "fill") fillCanvasCache.clear();
 
   if (String(selected.id).startsWith("local-") || String(selected.id).startsWith("fill-") || !firebaseListo || !strokesRefs[hojaActual]) {
@@ -835,6 +849,10 @@ canvas.addEventListener("dblclick", e => e.preventDefault());
 canvas.addEventListener("pointerdown", e => {
   cerrarTodosLosMenus();
   try { canvas.setPointerCapture?.(e.pointerId); } catch (_) {}
+
+  if (e.pointerType === "touch" && Date.now() - lastGestureEndTime < 250) {
+    return;
+  }
 
   if (e.pointerType === "touch") {
     touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -883,10 +901,11 @@ canvas.addEventListener("pointermove", e => {
 
   if (!dibujando || !currentStroke || activeDrawPointerId !== e.pointerId) return;
   const p = getPos(e);
-  const prev = currentStroke.points[currentStroke.points.length - 1];
   currentStroke.points.push(p);
 
+  const pts = currentStroke.points;
   const isEraser = currentStroke.tool === "borrador";
+  
   ctx.save();
   if (isEraser) {
     ctx.globalCompositeOperation = "destination-out";
@@ -899,12 +918,26 @@ canvas.addEventListener("pointermove", e => {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.globalAlpha = currentStroke.alpha ?? 1;
-  ctx.beginPath();
-  ctx.moveTo(prev.x, prev.y);
-  ctx.lineTo(p.x, p.y);
-  ctx.stroke();
-  ctx.restore();
+
+  if (pts.length > 2) {
+    const p0 = pts[pts.length - 3];
+    const p1 = pts[pts.length - 2];
+    const p2 = pts[pts.length - 1];
+    const xc = (p1.x + p2.x) / 2;
+    const yc = (p1.y + p2.y) / 2;
+    
+    ctx.beginPath();
+    ctx.moveTo((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+    ctx.quadraticCurveTo(p1.x, p1.y, xc, yc);
+    ctx.stroke();
+  } else if (pts.length === 2) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo(pts[1].x, pts[1].y);
+    ctx.stroke();
+  }
   
+  ctx.restore();
   drawSelectionOverlay();
   e.preventDefault();
 });
@@ -965,6 +998,7 @@ function finalizarPuntero(e, cancelado = false) {
       if (touchPointers.size === 0) {
         gestureActive = false;
         gestureStart = null;
+        lastGestureEndTime = Date.now();
       }
       e.preventDefault();
       return;
@@ -1067,7 +1101,7 @@ function cambiarHoja(nuevaHoja) {
 }
 
 /* ============================================================
-   PALETA RÁPIDA (lápices de colores)
+   PALETA RÁPIDA
 ============================================================ */
 const COLORES = [
   "#3b322b", "#7d6c5c", "#b58a5a", "#d9a86c",
@@ -1108,7 +1142,7 @@ function seleccionarColor(hex, btnEl) {
 renderLapices();
 
 /* ============================================================
-   MENÚS DESPLEGABLES — Lápices y Acciones
+   MENÚS DESPLEGABLES
 ============================================================ */
 const ICONOS_TOOL = {
   lapiz:    '<svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="currentColor"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="currentColor"/></svg>',
@@ -1224,7 +1258,7 @@ document.getElementById("btn-undo")?.addEventListener("click", async () => {
   if (String(ultimo.id).startsWith("local-") || String(ultimo.id).startsWith("fill-")) {
     localStrokes = localStrokes.filter(s => s.id !== ultimo.id);
     if (ultimo.type === "fill") fillCanvasCache.delete(ultimo.clientId || ultimo.id);
-    else fillCanvasCache.clear(); // Por si deshacemos un trazo que era límite
+    else fillCanvasCache.clear(); 
     scheduleRedraw();
     mostrarGuardado();
     return;
@@ -1544,13 +1578,24 @@ function mostrarGuardado() {
 }
 
 /* ============================================================
-   FIREBASE
+   🔥 FIREBASE CORREGIDO (AQUÍ ESTABA EL ERROR)
 ============================================================ */
-const app  = initializeApp(FIREBASE_CONFIG);
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: true
-});
+const app = initializeApp(FIREBASE_CONFIG);
+
+let db;
+try {
+  // Corrección: NO se pueden usar experimentalForceLongPolling y experimentalAutoDetectLongPolling juntos.
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    experimentalForceLongPolling: true 
+  });
+} catch (e) {
+  console.warn("Modo offline no disponible. Usando caché en memoria:", e);
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  });
+}
+
 const auth = getAuth(app);
 
 function suscribirHoja(tab) {
