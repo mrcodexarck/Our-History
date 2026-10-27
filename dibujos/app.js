@@ -90,6 +90,10 @@ const COLOR_FONDO = "#fdfaf3";
 let tempLayerCanvas = null;
 let tempLayerCtx = null;
 
+// NUEVO: Lienzo temporal para mezclar capas al calcular rellenos
+let compLayerCanvas = null;
+let compLayerCtx = null;
+
 function getTempLayer() {
   if (!tempLayerCanvas) {
     tempLayerCanvas = document.createElement("canvas");
@@ -98,6 +102,16 @@ function getTempLayer() {
     tempLayerCtx = tempLayerCanvas.getContext("2d", { willReadFrequently: true });
   }
   return tempLayerCtx;
+}
+
+function getCompLayer() {
+  if (!compLayerCanvas) {
+    compLayerCanvas = document.createElement("canvas");
+    compLayerCanvas.width = W;
+    compLayerCanvas.height = H;
+    compLayerCtx = compLayerCanvas.getContext("2d", { willReadFrequently: true });
+  }
+  return compLayerCtx;
 }
 
 function pintarFondo() {
@@ -401,14 +415,16 @@ function normalizarHex(hex) {
 /* ============================================================
    DIBUJO
 ============================================================ */
-function drawStroke(stroke, targetCtx = ctx) {
+function drawStroke(stroke, targetCtx = ctx, sourceCtx = null) {
   if (!stroke) return;
 
   if (stroke.type === "fill") {
     const key = stroke.clientId || stroke.id;
     let cached = fillCanvasCache.get(key);
     if (cached === undefined) {
-      cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex, targetCtx);
+      // NUEVO: Usa el lienzo combinado si se proporciona, si no, usa el de destino
+      const fillSource = sourceCtx || targetCtx;
+      cached = floodFillToCanvas(stroke.x, stroke.y, stroke.hex, fillSource);
       if (fillCanvasCache.size > MAX_FILL_CACHE) {
         const firstKey = fillCanvasCache.keys().next().value;
         fillCanvasCache.delete(firstKey);
@@ -479,26 +495,48 @@ function redrawAll() {
   }
 
   const tCtx = getTempLayer();
+  const cCtx = getCompLayer(); // Lienzo auxiliar para calcular rellenos
 
   for (const capa of [...capas].reverse()) {
     if (capa.visible === false) continue;
     
     tCtx.clearRect(0, 0, W, H);
-    (porCapa.get(capa.id) || []).forEach(s => drawStroke(s, tCtx));
+    
+    (porCapa.get(capa.id) || []).forEach(s => {
+      if (s.type === "fill") {
+        // NUEVO: Fusiona las capas de abajo y la capa actual para calcular el relleno con precisión
+        cCtx.clearRect(0, 0, W, H);
+        cCtx.drawImage(ctx, 0, 0); 
+        cCtx.drawImage(tCtx.canvas, 0, 0); 
+        drawStroke(s, tCtx, cCtx);
+      } else {
+        drawStroke(s, tCtx, tCtx);
+      }
+    });
+    
     ctx.drawImage(tCtx.canvas, 0, 0);
   }
   
   for (const [lid, arr] of porCapa) {
     if (!ids.has(lid)) {
       tCtx.clearRect(0, 0, W, H);
-      arr.forEach(s => drawStroke(s, tCtx));
+      arr.forEach(s => {
+        if (s.type === "fill") {
+          cCtx.clearRect(0, 0, W, H);
+          cCtx.drawImage(ctx, 0, 0);
+          cCtx.drawImage(tCtx.canvas, 0, 0);
+          drawStroke(s, tCtx, cCtx);
+        } else {
+          drawStroke(s, tCtx, tCtx);
+        }
+      });
       ctx.drawImage(tCtx.canvas, 0, 0);
     }
   }
 
   if (currentStroke && !capaBloqueada(currentStroke.layerId || capaActiva().id)) {
     tCtx.clearRect(0, 0, W, H);
-    drawStroke(currentStroke, tCtx);
+    drawStroke(currentStroke, tCtx, tCtx);
     ctx.drawImage(tCtx.canvas, 0, 0);
   }
 
