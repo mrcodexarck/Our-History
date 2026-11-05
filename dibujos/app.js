@@ -140,10 +140,6 @@ let isDrawingLasso = false;
 let lassoPath = [];
 let lassoStartPoint = null;
 let selectionDragState = null;
-// 🆕 HISTORIAL DESHACER / REHACER
-let undoStack = [];
-let redoStack = [];
-
 
 // FONDOS
 let fondoActual = "blanco"; 
@@ -326,13 +322,6 @@ function isStrokeInLasso(stroke, lasso) {
     if (isPointInPolygon(p, lasso)) return true;
   }
   return false;
-}
-
-function updateHistoryButtons() {
-  const btnUndo = document.getElementById("btn-undo-top");
-  const btnRedo = document.getElementById("btn-redo-top");
-  if (btnUndo) btnUndo.disabled = undoStack.length === 0;
-  if (btnRedo) btnRedo.disabled = redoStack.length === 0;
 }
 
 function actualizarUISeleccion() {
@@ -818,12 +807,6 @@ async function guardarRelleno(x, y, hex) {
 
   const localStroke = { id: localId, clientId, type: "fill", x, y, hex, layerId: capa.id, author: myUid, ts: Date.now() };
   localStrokes.push(localStroke);
-  
-  // 🆕 LO AGREGAMOS A LA PILA DE DESHACER
-  undoStack.push(cloneStroke(localStroke));
-  redoStack = [];
-  updateHistoryButtons();
-  
   scheduleRedraw();
 
   if (!firebaseListo || !strokesRefs[hojaActual]) return;
@@ -1187,20 +1170,9 @@ async function terminarTrazo() {
     return;
   }
 
- const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
+  const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
   const localId = "local-" + clientId;
-  
-  // 1. Creamos la variable localStroke
-  const localStroke = { id: localId, clientId, ...strokeToSave };
-  
-  // 2. Lo agregamos a los trazos
-  localStrokes.push(localStroke);
-  
-  // 3. 🆕 LO AGREGAMOS A LA PILA DE DESHACER
-  undoStack.push(cloneStroke(localStroke));
-  redoStack = [];
-  updateHistoryButtons();
-
+  localStrokes.push({ id: localId, clientId, ...strokeToSave });
   currentStroke = null;
   scheduleRedraw();
 
@@ -1253,9 +1225,6 @@ function cambiarHoja(nuevaHoja) {
   localStrokes = [];
   currentStroke = null;
   fillCanvasCache.clear();
-  undoStack = [];
-  redoStack = [];
-  updateHistoryButtons();
   renderLayersPanel();
 
   fondoActual = "blanco";
@@ -1415,9 +1384,6 @@ document.getElementById("btn-clear")?.addEventListener("click", async () => {
   localStrokes = [];
   selectedStrokeIds.clear();
   fillCanvasCache.clear();
-  undoStack = [];
-  redoStack = [];
-  updateHistoryButtons();
   actualizarUISeleccion();
   scheduleRedraw();
 
@@ -1671,172 +1637,3 @@ function actualizarUIconPerfiles() {
   document.querySelectorAll("[data-nombre-de]").forEach(el => el.textContent = PERFILES[el.dataset.nombreDe].nombre);
 }
 
-async function guardarPerfil() {
-  if (!perfilActual) return;
-  const nombre = document.getElementById("perfil-input-nombre").value.trim(); const cumple = document.getElementById("perfil-input-cumple").value.trim(); const bio = document.getElementById("perfil-input-bio").value.trim();
-  const emoji = document.querySelector(".perfil-emoji-opcion.active")?.dataset.emoji || PERFILES[perfilActual].emoji;
-  if (!nombre) { alert("El nombre no puede estar vacío"); return; }
-  const btn = document.getElementById("perfil-guardar"); btn.disabled = true; btn.textContent = "Guardando…";
-  try {
-    await setDoc(docPerfil(perfilActual), { nombre, emoji, cumple, bio, actualizadoEn: Date.now() }, { merge: true });
-    PERFILES[perfilActual] = { ...PERFILES[perfilActual], nombre, emoji, cumple, bio };
-    actualizarUIconPerfiles(); btn.textContent = "✓ Guardado";
-    setTimeout(() => { cerrarModalPerfil(); btn.disabled = false; btn.textContent = "Guardar"; }, 800);
-  } catch (err) { btn.textContent = "Error"; setTimeout(() => { btn.disabled = false; btn.textContent = "Guardar"; }, 1500); }
-}
-
-const mensajeDoc = () => doc(db, "parejas", PAREJA_ID, "messages", hoyISO());
-function suscribirMensajes() {
-  if (mensajeUnsub) mensajeUnsub();
-  mensajeUnsub = onSnapshot(mensajeDoc(), snap => { const data = snap.data() || {}; mensajeJoan = data.joan || ""; mensajeEmily = data.emily || ""; actualizarBanana(); }, err => {});
-}
-function miMensaje() { return perfilActual === "joan" ? mensajeJoan : mensajeEmily; }
-function mensajeDelOtro() { return otroPerfil === "joan" ? mensajeJoan : mensajeEmily; }
-function actualizarBanana() { const badge = document.getElementById("banana-badge"); if (!badge) return; badge.hidden = !mensajeDelOtro(); }
-function abrirMensaje() {
-  const overlay = document.getElementById("message-overlay"); const titulo = document.getElementById("message-titulo"); const sub = document.getElementById("message-sub"); const lectura = document.getElementById("message-lectura"); const editor = document.getElementById("message-editor");
-  const esMia = esMiHoja(hojaActual);
-  if (esMia) { titulo.textContent = "Escribe un mensaje"; sub.textContent = `Para ${PERFILES[otroPerfil].nombre}`; lectura.hidden = true; editor.hidden = false; document.getElementById("message-input").value = miMensaje(); }
-  else { const quienId = hojaActual === 1 ? "joan" : "emily"; titulo.textContent = `Mensaje de ${PERFILES[quienId].nombre}`; sub.textContent = "Solo tú puedes leerlo 🤎"; editor.hidden = true; lectura.hidden = false; document.getElementById("message-texto").textContent = mensajeDelOtro() || "Aún no te ha escrito nada hoy…"; }
-  overlay.hidden = false;
-}
-function cerrarMensaje() { document.getElementById("message-overlay").hidden = true; }
-async function guardarMensaje() {
-  if (!perfilActual) return; const input = document.getElementById("message-input"); const texto = input.value.trim(); const btn = document.getElementById("message-guardar");
-  btn.disabled = true; btn.textContent = "Guardando…";
-  try {
-    await setDoc(mensajeDoc(), { [perfilActual]: texto, actualizadoEn: Date.now() }, { merge: true });
-    if (perfilActual === "joan") mensajeJoan = texto; else mensajeEmily = texto;
-    btn.textContent = "✓ Guardado"; setTimeout(() => { cerrarMensaje(); btn.disabled = false; btn.textContent = "Guardar mensaje"; mostrarGuardado(); }, 700);
-  } catch (err) { btn.textContent = "Error"; setTimeout(() => { btn.disabled = false; btn.textContent = "Guardar mensaje"; }, 1500); }
-}
-
-const presenciaDoc = perfil => doc(db, "parejas", PAREJA_ID, "presence", perfil);
-async function publicarPresencia() { if (!firebaseListo || !perfilActual) return; try { await setDoc(presenciaDoc(perfilActual), { perfil: perfilActual, vistoEn: Date.now(), tab: hojaActual }); } catch (err) {} }
-function iniciarPresencia() { if (!perfilActual) return; publicarPresencia(); if (presenciaInterval) clearInterval(presenciaInterval); presenciaInterval = setInterval(publicarPresencia, 15000); }
-
-const overlayEditar = document.getElementById("perfil-editar-overlay");
-function abrirModalPerfil() { if (!perfilActual) return; const p = PERFILES[perfilActual]; document.getElementById("perfil-input-nombre").value = p.nombre || ""; document.getElementById("perfil-input-cumple").value = p.cumple || ""; document.getElementById("perfil-input-bio").value = p.bio || ""; document.querySelectorAll(".perfil-emoji-opcion").forEach(b => b.classList.toggle("active", b.dataset.emoji === p.emoji)); overlayEditar.hidden = false; }
-function cerrarModalPerfil() { overlayEditar.hidden = true; }
-
-const perfilOverlay = document.getElementById("perfil-overlay");
-function mostrarSelectorPerfil() { perfilOverlay?.classList.remove("oculto"); }
-function ocultarSelectorPerfil() { perfilOverlay?.classList.add("oculto"); }
-
-document.querySelectorAll(".perfil-opcion").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const nuevoId = btn.dataset.perfil; if (!PERFILES[nuevoId]) return;
-    const cambio = perfilActual && perfilActual !== nuevoId;
-    if (cambio) {
-      Object.values(unsubscribers).forEach(fn => fn && fn()); Object.values(layerUnsubscribers).forEach(fn => fn && fn());
-      unsubscribers[1] = unsubscribers[2] = null; layerUnsubscribers[1] = layerUnsubscribers[2] = null; strokesRefs[1] = strokesRefs[2] = null;
-      localStrokes = []; currentStroke = null; fillCanvasCache.clear(); pintarFondo();
-    }
-    configurarPerfil(nuevoId); actualizarUIconPerfiles(); ocultarSelectorPerfil();
-    hojaActual = 0; cambiarHoja(miTab);
-    if (firebaseListo) iniciarPresencia();
-  });
-});
-
-function pintarTabsConEstado() { tabsHoja.forEach(t => { const n = parseInt(t.dataset.hoja, 10); t.classList.toggle("mi-hoja", n === miTab); }); }
-
-// Color Picker
-const COLOR_BASICOS = [ "#c9534a","#e53935","#8b2d1f","#5d3a2a","#3b322b","#000000","#cfd8dc","#8fd6ec", "#4fc3f7","#1e88e5","#1565c0","#0d2f5c","#fff3b0","#ffd54f","#ffb74d","#ff8a65", "#bcaaa4","#795548","#c5e1a5","#aed581","#8bc34a","#4caf50","#2e7d32","#1b5e20", "#f8bbd0","#ec407a","#ad1457","#6a1b9a","#b58a5a","#7d6c5c","#d9a86c","#c9a227", "#ff5722","#7cc0d4","#5b8fb0","#8b6cb0","#ffffff","#e0e0e0","#9e9e9e","#616161", "#424242","#212121" ];
-const CUSTOM_KEY = "dibujos-colores-custom";
-let coloresCustom = [];
-try { const saved = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]"); if (Array.isArray(saved)) coloresCustom = saved.slice(0, 16); } catch(e) {}
-
-let cpState = { h: 0, s: 0, v: 100 }; let cpCallback = null;
-const cpOverlay = document.getElementById("color-picker-overlay"); const cpGradient = document.getElementById("color-gradient"); const cpGradientCanvas = document.getElementById("color-gradient-canvas"); const cpGradientCursor = document.getElementById("color-gradient-cursor"); const cpHue = document.getElementById("color-hue"); const cpHueCursor = document.getElementById("color-hue-cursor"); const cpPreviewBox = document.getElementById("color-preview-box"); const cpHexInput = document.getElementById("color-hex-input"); const cpRInput = document.getElementById("color-r-input"); const cpGInput = document.getElementById("color-g-input"); const cpBInput = document.getElementById("color-b-input"); const cpBasicos = document.getElementById("color-basicos"); const cpCustomGrid = document.getElementById("color-custom"); const cpAddCustom = document.getElementById("color-add-custom"); const cpCerrar = document.getElementById("color-picker-cerrar"); const cpCancelar = document.getElementById("color-cancelar"); const cpAplicar = document.getElementById("color-aplicar");
-let cpRgbActual = { r: 0, g: 0, b: 0 }; let cpHexActual = "#000000";
-
-function pintarGradientCanvas() {
-  if (!cpGradientCanvas) return; const c = cpGradientCanvas; const ctxG = c.getContext("2d"); const w = c.clientWidth || 300; const h = c.clientHeight || 200; c.width = w; c.height = h;
-  const gradH = ctxG.createLinearGradient(0, 0, w, 0); const hueRgb = hsvToRgb(cpState.h, 100, 100); gradH.addColorStop(0, "#ffffff"); gradH.addColorStop(1, rgbToHex(hueRgb.r, hueRgb.g, hueRgb.b)); ctxG.fillStyle = gradH; ctxG.fillRect(0, 0, w, h);
-  const gradV = ctxG.createLinearGradient(0, 0, 0, h); gradV.addColorStop(0, "rgba(0,0,0,0)"); gradV.addColorStop(1, "rgba(0,0,0,1)"); ctxG.fillStyle = gradV; ctxG.fillRect(0, 0, w, h);
-}
-function posicionarCursorGradient() { if (!cpGradientCursor || !cpGradient) return; const x = (cpState.s / 100) * cpGradient.clientWidth; const y = (1 - cpState.v / 100) * cpGradient.clientHeight; cpGradientCursor.style.left = x + "px"; cpGradientCursor.style.top = y + "px"; }
-function posicionarCursorHue() { if (!cpHueCursor) return; cpHueCursor.style.top = (cpState.h / 360) * 100 + "%"; }
-function actualizarDesdeGradient(clientX, clientY) { const rect = cpGradient.getBoundingClientRect(); const x = Math.max(0, Math.min(rect.width, clientX - rect.left)); const y = Math.max(0, Math.min(rect.height, clientY - rect.top)); cpState.s = (x / rect.width) * 100; cpState.v = (1 - y / rect.height) * 100; actualizarTodoElPicker(); }
-let draggingGradient = false;
-cpGradient?.addEventListener("pointerdown", e => { draggingGradient = true; cpGradient.setPointerCapture(e.pointerId); actualizarDesdeGradient(e.clientX, e.clientY); e.preventDefault(); });
-cpGradient?.addEventListener("pointermove", e => { if (!draggingGradient) return; actualizarDesdeGradient(e.clientX, e.clientY); e.preventDefault(); });
-cpGradient?.addEventListener("pointerup", () => { draggingGradient = false; }); cpGradient?.addEventListener("pointercancel", () => { draggingGradient = false; });
-function actualizarDesdeHue(clientY) { const rect = cpHue.getBoundingClientRect(); const y = Math.max(0, Math.min(rect.height, clientY - rect.top)); cpState.h = (y / rect.height) * 360; actualizarTodoElPicker(); pintarGradientCanvas(); }
-let draggingHue = false;
-cpHue?.addEventListener("pointerdown", e => { draggingHue = true; cpHue.setPointerCapture(e.pointerId); actualizarDesdeHue(e.clientY); e.preventDefault(); });
-cpHue?.addEventListener("pointermove", e => { if (!draggingHue) return; actualizarDesdeHue(e.clientY); e.preventDefault(); });
-cpHue?.addEventListener("pointerup", () => { draggingHue = false; }); cpHue?.addEventListener("pointercancel", () => { draggingHue = false; });
-
-function actualizarTodoElPicker(skipInputs = false) {
-  const rgb = hsvToRgb(cpState.h, cpState.s, cpState.v); cpRgbActual = rgb; cpHexActual = rgbToHex(rgb.r, rgb.g, rgb.b);
-  if (cpPreviewBox) cpPreviewBox.style.background = cpHexActual;
-  if (!skipInputs) { if (cpHexInput) cpHexInput.value = cpHexActual.toUpperCase(); if (cpRInput) cpRInput.value = rgb.r; if (cpGInput) cpGInput.value = rgb.g; if (cpBInput) cpBInput.value = rgb.b; }
-  posicionarCursorGradient(); posicionarCursorHue();
-}
-
-cpHexInput?.addEventListener("change", () => { const hex = normalizarHex(cpHexInput.value); if (!hex) { cpHexInput.value = cpHexActual.toUpperCase(); return; } const rgb = hexToRgb(hex); cpState = rgbToHsv(rgb.r, rgb.g, rgb.b); pintarGradientCanvas(); actualizarTodoElPicker(); });
-cpHexInput?.addEventListener("keydown", e => { if (e.key === "Enter") cpHexInput.blur(); });
-[cpRInput, cpGInput, cpBInput].forEach(inp => {
-  inp?.addEventListener("change", () => { const r = Math.max(0, Math.min(255, parseInt(cpRInput.value, 10) || 0)); const g = Math.max(0, Math.min(255, parseInt(cpGInput.value, 10) || 0)); const b = Math.max(0, Math.min(255, parseInt(cpBInput.value, 10) || 0)); cpState = rgbToHsv(r, g, b); pintarGradientCanvas(); actualizarTodoElPicker(); });
-  inp?.addEventListener("keydown", e => { if (e.key === "Enter") inp.blur(); });
-});
-function pintarBasicos() { if (!cpBasicos) return; cpBasicos.innerHTML = ""; COLOR_BASICOS.forEach(hex => { const b = document.createElement("button"); b.type = "button"; b.className = "color-swatch-item"; b.style.background = hex; b.title = hex.toUpperCase(); b.addEventListener("click", () => aplicarHexDelSwatch(hex)); cpBasicos.appendChild(b); }); }
-function pintarCustom() { if (!cpCustomGrid) return; cpCustomGrid.innerHTML = ""; for (let i = 0; i < 16; i++) { const hex = coloresCustom[i]; if (!hex) { const b = document.createElement("button"); b.type = "button"; b.className = "color-swatch-item vacio"; b.disabled = true; cpCustomGrid.appendChild(b); } else { const b = document.createElement("button"); b.type = "button"; b.className = "color-swatch-item"; b.style.background = hex; b.title = hex.toUpperCase() + " (mantén pulsado para eliminar)"; b.addEventListener("click", () => aplicarHexDelSwatch(hex)); let pressTimer = null; b.addEventListener("pointerdown", () => { pressTimer = setTimeout(() => { coloresCustom = coloresCustom.filter(c => c !== hex); try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(coloresCustom)); } catch(e) {} pintarCustom(); mostrarGuardado(); }, 700); }); b.addEventListener("pointerup", () => clearTimeout(pressTimer)); b.addEventListener("pointerleave", () => clearTimeout(pressTimer)); cpCustomGrid.appendChild(b); } } }
-function aplicarHexDelSwatch(hex) { const rgb = hexToRgb(hex); if (!rgb) return; cpState = rgbToHsv(rgb.r, rgb.g, rgb.b); pintarGradientCanvas(); actualizarTodoElPicker(); }
-cpAddCustom?.addEventListener("click", () => { if (!cpHexActual) return; coloresCustom = coloresCustom.filter(c => c !== cpHexActual); coloresCustom.unshift(cpHexActual); if (coloresCustom.length > 16) coloresCustom.length = 16; try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(coloresCustom)); } catch(e) {} pintarCustom(); mostrarGuardado(); });
-function abrirColorPicker(hexInicial, callback) { const rgb = hexToRgb(hexInicial) || { r: 0, g: 0, b: 0 }; cpState = rgbToHsv(rgb.r, rgb.g, rgb.b); cpCallback = callback; cpOverlay.hidden = false; requestAnimationFrame(() => { pintarGradientCanvas(); actualizarTodoElPicker(); }); }
-function cerrarColorPicker() { cpOverlay.hidden = true; cpCallback = null; }
-function aplicarColorPicker() { if (cpCallback) cpCallback(cpHexActual); cerrarColorPicker(); }
-cpCerrar?.addEventListener("click", cerrarColorPicker); cpCancelar?.addEventListener("click", cerrarColorPicker); cpAplicar?.addEventListener("click", aplicarColorPicker); cpOverlay?.addEventListener("click", e => { if (e.target === cpOverlay) cerrarColorPicker(); });
-window.addEventListener("resize", () => { actualizarVistaCanvas(); if (!cpOverlay.hidden) { pintarGradientCanvas(); actualizarTodoElPicker(); } });
-document.getElementById("btn-color-picker")?.addEventListener("click", () => {
-  cerrarTodosLosMenus(); abrirColorPicker(colorActual, hex => {
-    colorActual = hex; const activo = document.querySelector(".lapiz.active"); let idx = 0;
-    if (activo) { const encontrado = COLORES.indexOf(activo.dataset.color); if (encontrado >= 0) idx = encontrado; }
-    COLORES[idx] = hex; renderLapices(); const nuevo = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color === hex); nuevo?.classList.add("active");
-    if (herramienta !== "borrador" && herramienta !== "bote") { herramienta = "lapiz"; actualizarBotonLapicesActivo(); }
-    mostrarGuardado();
-  });
-});
-
-document.getElementById("perfil-btn")?.addEventListener("click", abrirModalPerfil);
-document.getElementById("perfil-editar-cerrar")?.addEventListener("click", cerrarModalPerfil);
-overlayEditar?.addEventListener("click", e => { if (e.target === overlayEditar) cerrarModalPerfil(); });
-document.querySelectorAll(".perfil-emoji-opcion").forEach(btn => { btn.addEventListener("click", () => { document.querySelectorAll(".perfil-emoji-opcion").forEach(b => b.classList.remove("active")); btn.classList.add("active"); }); });
-document.getElementById("perfil-guardar")?.addEventListener("click", guardarPerfil);
-document.getElementById("perfil-cambiar-usuario")?.addEventListener("click", () => { cerrarModalPerfil(); mostrarSelectorPerfil(); });
-document.getElementById("banana-btn")?.addEventListener("click", abrirMensaje);
-document.getElementById("message-cerrar")?.addEventListener("click", cerrarMensaje);
-document.getElementById("message-overlay")?.addEventListener("click", e => { if (e.target === document.getElementById("message-overlay")) cerrarMensaje(); });
-document.getElementById("message-guardar")?.addEventListener("click", guardarMensaje);
-
-async function initFirebase() {
-  try {
-    const cred = await signInAnonymously(auth); myUid = cred.user.uid; firebaseListo = true; setStatus("conectado");
-    escucharPerfiles(); suscribirMensajes();
-    if (perfilActual) { pintarTabsConEstado(); suscribirHoja(hojaActual); suscribirCapas(hojaActual); suscribirFondo(hojaActual); iniciarPresencia(); }
-  } catch (err) { console.error("❌ Error Firebase:", err); setStatus(null); }
-}
-
-pintarFondo(); actualizarVistaCanvas(); actualizarUISeleccion(); pintarBasicos(); pintarCustom(); actualizarBotonLapicesActivo();
-crearBotonFondo();
-
-if (perfilActual && PERFILES[perfilActual]) {
-  configurarPerfil(perfilActual); actualizarUIconPerfiles(); pintarTabsConEstado();
-  hojaActual = (hojaUrl && (hojaUrl === "1" || hojaUrl === "2")) ? parseInt(hojaUrl) : miTab;
-  tabsHoja.forEach(t => t.classList.toggle("active", parseInt(t.dataset.hoja, 10) === hojaActual));
-  ocultarSelectorPerfil();
-} else { mostrarSelectorPerfil(); }
-
-if (fechaUrl) {
-  const backBtn = document.querySelector('.app-header .icon-btn'); if (backBtn) backBtn.href = '../album/index.html';
-  if (fechaDiaEl) fechaDiaEl.textContent = `Editando: ${fechaDiaEl.textContent}`;
-}
-
-initFirebase();
-
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") { publicarPresencia(); clearTimeout(timeoutThumbnail); guardarThumbnail(); }
-  else if (document.visibilityState === "visible") { if (firebaseListo && perfilActual) publicarPresencia(); }
-});

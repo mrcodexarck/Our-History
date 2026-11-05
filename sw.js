@@ -75,7 +75,7 @@ self.addEventListener("fetch", event => {
         .catch(async () => {
           const cached = await caches.match(request);
           if (cached) return cached;
-          if (request.mode === "navigate") return caches.match("./index.html");
+// if (request.mode === "navigate") return caches.match("./index.html");
           return new Response("", { status: 404 });
         })
     );
