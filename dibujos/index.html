@@ -150,6 +150,16 @@
       <canvas id="canvas" width="900" height="900" aria-label="Lienzo de dibujo"></canvas>
     </div>
 
+        <!-- NUEVOS BOTONES DESHACER / REHACER -->
+    <div class="canvas-history-actions">
+      <button type="button" class="canvas-hist-btn" id="btn-undo-top" title="Deshacer" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+      </button>
+      <button type="button" class="canvas-hist-btn" id="btn-redo-top" title="Rehacer" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-7.7L21 8"/></svg>
+      </button>
+    </div>
+
     <button type="button" class="banana-btn" id="banana-btn" aria-label="Mensaje del día">
       <span class="banana-emoji">🍌</span>
       <span class="banana-badge" id="banana-badge" hidden></span>
@@ -357,12 +367,6 @@
   <!-- Menú desplegable de acciones: deshacer, capas, eliminar y limpiar -->
   <div class="bloque-menu bloque-menu-acciones">
     <div class="menu-acciones" id="menu-acciones" aria-label="Acciones del dibujo">
-      <button type="button" class="menu-item" id="btn-undo" title="Deshacer último trazo">
-        <span class="menu-item-icono" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-        </span>
-        <span class="menu-item-texto">Deshacer</span>
-      </button>
       <button type="button" class="menu-item" id="btn-layers" title="Administrar capas">
         <span class="menu-item-icono" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></svg>

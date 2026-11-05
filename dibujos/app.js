@@ -140,6 +140,10 @@ let isDrawingLasso = false;
 let lassoPath = [];
 let lassoStartPoint = null;
 let selectionDragState = null;
+// 🆕 HISTORIAL DESHACER / REHACER
+let undoStack = [];
+let redoStack = [];
+
 
 // FONDOS
 let fondoActual = "blanco"; 
@@ -322,6 +326,13 @@ function isStrokeInLasso(stroke, lasso) {
     if (isPointInPolygon(p, lasso)) return true;
   }
   return false;
+}
+
+function updateHistoryButtons() {
+  const btnUndo = document.getElementById("btn-undo-top");
+  const btnRedo = document.getElementById("btn-redo-top");
+  if (btnUndo) btnUndo.disabled = undoStack.length === 0;
+  if (btnRedo) btnRedo.disabled = redoStack.length === 0;
 }
 
 function actualizarUISeleccion() {
@@ -807,6 +818,12 @@ async function guardarRelleno(x, y, hex) {
 
   const localStroke = { id: localId, clientId, type: "fill", x, y, hex, layerId: capa.id, author: myUid, ts: Date.now() };
   localStrokes.push(localStroke);
+  
+  // 🆕 LO AGREGAMOS A LA PILA DE DESHACER
+  undoStack.push(cloneStroke(localStroke));
+  redoStack = [];
+  updateHistoryButtons();
+  
   scheduleRedraw();
 
   if (!firebaseListo || !strokesRefs[hojaActual]) return;
@@ -1170,9 +1187,20 @@ async function terminarTrazo() {
     return;
   }
 
-  const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
+ const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
   const localId = "local-" + clientId;
-  localStrokes.push({ id: localId, clientId, ...strokeToSave });
+  
+  // 1. Creamos la variable localStroke
+  const localStroke = { id: localId, clientId, ...strokeToSave };
+  
+  // 2. Lo agregamos a los trazos
+  localStrokes.push(localStroke);
+  
+  // 3. 🆕 LO AGREGAMOS A LA PILA DE DESHACER
+  undoStack.push(cloneStroke(localStroke));
+  redoStack = [];
+  updateHistoryButtons();
+
   currentStroke = null;
   scheduleRedraw();
 
@@ -1225,6 +1253,9 @@ function cambiarHoja(nuevaHoja) {
   localStrokes = [];
   currentStroke = null;
   fillCanvasCache.clear();
+  undoStack = [];
+  redoStack = [];
+  updateHistoryButtons();
   renderLayersPanel();
 
   fondoActual = "blanco";
@@ -1384,6 +1415,9 @@ document.getElementById("btn-clear")?.addEventListener("click", async () => {
   localStrokes = [];
   selectedStrokeIds.clear();
   fillCanvasCache.clear();
+  undoStack = [];
+  redoStack = [];
+  updateHistoryButtons();
   actualizarUISeleccion();
   scheduleRedraw();
 
