@@ -445,10 +445,30 @@ async function cambiarFondo(tipo, imagenBase64 = null) {
 
 function crearBotonFondo() {
   if (!menuAcciones) return;
+  
   const btn = document.createElement("button");
-  btn.className = "tool-item"; 
-  btn.innerHTML = `<span style="display:inline-block; width:20px; text-align:center;">🖼️</span> Fondo`;
-  btn.addEventListener("click", () => { cerrarTodosLosMenus(); abrirPanelFondos(); });
+  btn.type = "button";
+  btn.className = "menu-item"; // 👈 Usa la misma clase que los otros botones
+  btn.title = "Cambiar el fondo del lienzo";
+  
+  // 👈 Usa la misma estructura de icono (SVG) y texto que los otros botones
+  btn.innerHTML = `
+    <span class="menu-item-icono" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </svg>
+    </span>
+    <span class="menu-item-texto">Fondo</span>
+  `;
+  
+  btn.addEventListener("click", () => { 
+    cerrarTodosLosMenus(); 
+    abrirPanelFondos(); 
+  });
+  
+  // Lo insertamos como el primer elemento del menú de acciones
   menuAcciones.insertBefore(btn, menuAcciones.firstChild);
 }
 
