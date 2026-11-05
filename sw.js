@@ -3,9 +3,6 @@
    Estrategia: Network First. Sin versiones manuales.
 ============================================================ */
 
-// 👇 El caché se genera automáticamente con la fecha y hora actual.
-// Cada vez que este archivo cambie, el navegador lo detecta,
-// crea un caché nuevo y borra el anterior.
 const CACHE_NAME = `nuestra-historia-${Date.now()}`;
 
 const ASSETS_ESTATICOS = [
@@ -38,11 +35,16 @@ self.addEventListener("activate", event => {
 /* FETCH */
 self.addEventListener("fetch", event => {
   const { request } = event;
+  
+  // 1. Ignorar peticiones que no sean GET
   if (request.method !== "GET") return;
+
+  // 2. Ignorar extensiones del navegador (esto causaba errores rojos)
+  if (request.url.startsWith("chrome-extension://")) return;
 
   const url = new URL(request.url);
 
-  // Ignorar Firebase, Google Fonts y CDNs externos
+  // 3. Ignorar Firebase, Google Fonts y CDNs externos
   if (
     url.hostname.includes("firebase") ||
     url.hostname.includes("googleapis") ||
@@ -50,7 +52,7 @@ self.addEventListener("fetch", event => {
     url.hostname.includes("fonts.g")
   ) return;
 
-  // HTML, CSS, JS → NETWORK FIRST (sin caché HTTP)
+  // 4. HTML, CSS, JS → NETWORK FIRST (sin caché HTTP)
   if (
     request.destination === "document" ||
     request.destination === "style"    ||
@@ -70,27 +72,34 @@ self.addEventListener("fetch", event => {
           }
           return response;
         })
-        .catch(() => {
-          return caches.match(request).then(cached => {
-            if (cached) return cached;
-            if (request.mode === "navigate") return caches.match("./index.html");
-          });
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          if (request.mode === "navigate") return caches.match("./index.html");
+          return new Response("", { status: 404 });
         })
     );
     return;
   }
 
-  // Imágenes, fuentes → CACHE FIRST
+  // 5. Imágenes, fuentes → CACHE FIRST (CORREGIDO CON .catch)
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
-      return fetch(request).then(response => {
-        if (response && response.status === 200 && response.type === "basic") {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        }
-        return response;
-      });
+      
+      return fetch(request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === "basic") {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => {
+          // 👇 ESTO ES LO QUE FALTABA 👇
+          // Si la imagen o archivo falla, devolvemos una respuesta vacía en lugar de dar error
+          return new Response("", { status: 404, statusText: "Not Found" });
+        });
     })
   );
 });
