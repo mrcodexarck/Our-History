@@ -1,0 +1,19 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; touch-action: manipulation; }
+body { background: #241c17; color: #fff; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+.app-header { padding: 10px; display: flex; align-items: center; gap: 10px; background: #33261d; }
+.app-header a { color: #fff; text-decoration: none; font-size: 1.2rem; }
+
+.game-container { flex: 1; display: flex; flex-direction: column; padding: 10px; gap: 10px; position: relative;}
+.player-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 15px; }
+.p2 { transform: rotate(180deg); } /* Emily juega desde el otro lado */
+
+.lane { width: 100%; height: 50px; background: #222; border-radius: 25px; position: relative; border: 2px solid #444; }
+.car { font-size: 2.5rem; position: absolute; top: 50%; transform: translateY(-50%); left: 0; transition: left 0.1s linear; }
+
+.tap-btn { padding: 20px; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 15px; color: #000; cursor: pointer; }
+.p1 .tap-btn { background: #d9a86c; }
+.p2 .tap-btn { background: #e88a7a; }
+.tap-btn:active { transform: scale(0.95); filter: brightness(0.8); }
+.tap-btn:disabled { opacity: 0.5; }
+
+.status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; font-weight: bold; text-align: center; z-index: 10; }

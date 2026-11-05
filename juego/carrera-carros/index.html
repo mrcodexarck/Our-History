@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Carrera de Carros</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="app-header">
+  <a href="../index.html" class="icon-btn">⬅️ Volver</a>
+  <h1>🏁 Carrera de Carros</h1>
+</header>
+
+<main class="game-container">
+  <!-- Jugador 1 (Arriba) -->
+  <div class="player-zone p1">
+    <div class="lane"><div class="car" id="car-p1">🚗</div></div>
+    <button class="tap-btn" id="btn-p1">¡TOCA JOAN! 🤎</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Jugador 2 (Abajo) -->
+  <div class="player-zone p2">
+    <button class="tap-btn" id="btn-p2">¡TOCA EMILY! 💛</button>
+    <div class="lane"><div class="car" id="car-p2">🚙</div></div>
+  </div>
+  
+  <div class="status" id="status-msg">¡Preparados, listos... Fuera!</div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
