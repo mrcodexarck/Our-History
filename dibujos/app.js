@@ -332,9 +332,8 @@ function updateHistoryButtons() {
   const btnUndo = document.getElementById("btn-undo-top");
   const btnRedo = document.getElementById("btn-redo-top");
   
-  const misTrazos = localStrokes.filter(s => s.author === myUid);
-  
-  if (btnUndo) btnUndo.disabled = misTrazos.length === 0;
+  // Si hay trazos en la pantalla, activa Deshacer. Si hay en la pila, activa Rehacer.
+  if (btnUndo) btnUndo.disabled = localStrokes.length === 0;
   if (btnRedo) btnRedo.disabled = redoStack.length === 0;
 }
 
@@ -819,6 +818,7 @@ async function guardarRelleno(x, y, hex) {
 
   const localStroke = { id: localId, clientId, type: "fill", x, y, hex, layerId: capa.id, author: myUid, ts: Date.now() };
   localStrokes.push(localStroke);
+  updateHistoryButtons(); // 👈 AGREGA ESTA LÍNEA AQUÍ
   scheduleRedraw();
 
   if (!firebaseListo || !strokesRefs[hojaActual]) return;
@@ -1185,6 +1185,7 @@ async function terminarTrazo() {
   const clientId = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2,8)}`);
   const localId = "local-" + clientId;
   localStrokes.push({ id: localId, clientId, ...strokeToSave });
+  updateHistoryButtons(); // 👈 AGREGA ESTA LÍNEA AQUÍ
   currentStroke = null;
   scheduleRedraw();
 
@@ -1209,10 +1210,12 @@ async function terminarTrazo() {
 ============================================================ */
 document.getElementById("btn-undo-top")?.addEventListener("click", async () => {
   cerrarTodosLosMenus();
-  const misTrazos = localStrokes.filter(s => s.author === myUid).sort((a, b) => strokeOrderTs(b) - strokeOrderTs(a));
-  if (!misTrazos.length) return;
   
-  const ultimo = misTrazos[0];
+  if (localStrokes.length === 0) return;
+  
+  // Toma el ÚLTIMO trazo de la pantalla directamente
+  const ultimo = localStrokes[localStrokes.length - 1];
+  
   redoStack.push(cloneStroke(ultimo));
   
   localStrokes = localStrokes.filter(s => s.id !== ultimo.id);
@@ -1624,6 +1627,7 @@ function suscribirHoja(tab) {
     actualizarUISeleccion();
     renderLayersPanel();
     scheduleRedraw();
+    updateHistoryButtons(); // 👈 AGREGA ESTA LÍNEA AQUÍ
     setStatus("conectado");
   }, err => { setStatus(null); setTimeout(() => { if (firebaseListo && tab === hojaActual) suscribirHoja(tab); }, 3000); });
 }
