@@ -1047,6 +1047,30 @@ canvas.addEventListener("pointerdown", e => {
     e.preventDefault();
     return;
   }
+    if (herramienta === "cuentagotas") {
+    try {
+      // Lee el color exacto del pixel en el lienzo
+      const pixel = ctx.getImageData(point.x, point.y, 1, 1).data;
+      if (pixel[3] > 0) { // Si el pixel no es transparente
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        colorActual = hex;
+        
+        // Actualiza visualmente la paleta de colores
+        document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
+        const match = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color.toLowerCase() === hex.toLowerCase());
+        if (match) match.classList.add("active");
+        
+        // Vuelve automáticamente a la herramienta de dibujo
+        herramienta = "lapiz";
+        actualizarBotonLapicesActivo();
+        mostrarAviso("Color elegido");
+      }
+    } catch (err) {
+      console.warn("No se pudo leer el color en esta zona", err);
+    }
+    e.preventDefault();
+    return;
+  }
   comenzarTrazo(e, point);
   e.preventDefault();
 });
@@ -1352,11 +1376,12 @@ const ICONOS_TOOL = {
   pincel: '<svg viewBox="0 0 24 24"><path d="M9.5 14.5c-1 2-3 3.5-6 4 2-3 3.5-5 5.5-6l.5 2z" fill="currentColor"/><path d="M14 10l-4 4-1-1 4-4c1-1 3-3 5-5 1.5-1.5 3-2 4-1 1 1 .5 2.5-1 4-2 2-4 4-5 3z" fill="currentColor"/></svg>',
   borrador: '<svg viewBox="0 0 24 24"><path d="M20 20H7L3 16a2 2 0 010-3L14 2l8 8-7 7" fill="currentColor"/></svg>',
   bote: '<svg viewBox="0 0 24 24"><path d="M18 4l-1.5-1.5a1 1 0 00-1.4 0L4 13.5V17l8-8 4 4-8 8h3.5l10.5-10.5a1 1 0 000-1.4L18 4z" fill="currentColor"/><path d="M20 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z" fill="currentColor"/></svg>',
-  seleccionar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 10-6 1-3 6-5-17z"/><path d="M13 15l5 5"/></svg>'
+  seleccionar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 10-6 1-3 6-5-17z"/><path d="M13 15l5 5"/></svg>',
+  cuentagotas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg>'
 };
 
 const NOMBRES_TOOL = {
-  lapiz: "Lápiz", marcador: "Marcador", pincel: "Pincel", borrador: "Borrador", bote: "Bote", seleccionar: "Lazo Mágico"
+  lapiz: "Lápiz", marcador: "Marcador", pincel: "Pincel", borrador: "Borrador", bote: "Bote", seleccionar: "Lazo Mágico",cuentagotas: "Cuentagotas"
 };
 
 const btnLapices     = document.getElementById("btn-lapices");
@@ -1402,7 +1427,7 @@ document.querySelectorAll(".tool-item").forEach(item => {
   item.addEventListener("click", () => {
     herramienta = item.dataset.tool;
     actualizarBotonLapicesActivo();
-    if (herramienta === "borrador" || herramienta === "bote" || herramienta === "seleccionar") {
+    if (herramienta === "borrador" || herramienta === "bote" || herramienta === "seleccionar" || herramienta === "cuentagotas") {
       document.querySelectorAll(".lapiz").forEach(l => l.classList.remove("active"));
     } else {
       const match = [...document.querySelectorAll(".lapiz")].find(l => l.dataset.color === colorActual);

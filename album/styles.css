@@ -435,3 +435,67 @@ body {
     height: 18px;
   }
 }
+
+/* ============================================================
+   BOTÓN DE DESCARGA
+============================================================ */
+.album-descargar {
+  position: absolute;
+  top: 18px;
+  right: 106px; /* Lo posicionamos a la izquierda del botón editar */
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(20, 15, 12, .65);
+  border: 1px solid rgba(127, 192, 212, .5);
+  color: #7cc0d4;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .2s ease, transform .2s ease, background .2s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.album-descargar svg { width: 16px; height: 16px; }
+.album-card:hover .album-descargar { opacity: 1; transform: scale(1); }
+.album-descargar:hover {
+  background: rgba(127, 192, 212, .9);
+  color: #241c17;
+  border-color: rgba(255, 255, 255, .6);
+}
+
+/* Estilo del botón de descarga en el Lightbox */
+.lb-descargar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(127, 192, 212, .4);
+  color: #7cc0d4;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.lb-descargar:hover {
+  background: rgba(127, 192, 212, .25);
+  transform: scale(1.08);
+}
+.lb-descargar svg { width: 20px; height: 20px; }
+
+/* Ajustes para móvil (hacerlos siempre visibles) */
+@media (hover: none), (pointer: coarse) {
+  .album-descargar {
+    opacity: 1;
+    transform: scale(1);
+    width: 40px;
+    height: 40px;
+    top: 14px;
+    right: 104px; /* Ajuste de espacio en móvil */
+  }
+  .album-descargar svg { width: 18px; height: 18px; }
+}

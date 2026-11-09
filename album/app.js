@@ -97,18 +97,30 @@ function renderizar() {
         <div class="album-img">
           <img src="${item.imagen}" alt="Dibujo del ${fechaFmt}" loading="lazy">
         </div>
+        
+        <!-- 🆕 BOTÓN DE DESCARGA EN LA TARJETA -->
+        <button type="button" class="album-descargar" aria-label="Descargar imagen" title="Guardar en galería">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+
         <button type="button" class="album-editar" aria-label="Editar dibujo" title="Editar dibujo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 20h9"></path>
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
           </svg>
         </button>
+        
         <button type="button" class="album-eliminar" aria-label="Eliminar dibujo" title="Eliminar del álbum">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
+        
         <div class="album-leyenda">
           <span class="album-fecha-txt">${fechaFmt}</span>
           <span class="album-hoja-badge">${labelHoja}</span>
@@ -132,6 +144,12 @@ function renderizar() {
     btnEliminar.addEventListener("click", (e) => {
       e.stopPropagation();
       eliminarDelAlbum(item, btnEliminar, fechaFmt, labelHoja);
+    });
+
+    const btnDescargarCard = card.querySelector(".album-descargar");
+    btnDescargarCard.addEventListener("click", (e) => {
+      e.stopPropagation();
+      descargarImagen(item.imagen, `dibujo-${fechaSegura}-hoja${item.hoja || 1}.png`);
     });
 
     feed.appendChild(card);
@@ -241,6 +259,29 @@ async function initFirebase() {
 }
 
 initFirebase();
+
+/* ============================================================
+   DESCARGAR IMAGEN
+============================================================ */
+function descargarImagen(base64Data, filename) {
+  const link = document.createElement("a");
+  link.href = base64Data;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+document.getElementById("lb-descargar")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const itemsValidos = items.filter(i => i && i.imagen);
+  const item = itemsValidos[idxActual];
+  if (!item) return;
+  
+  const fechaSegura = item.fecha || item.id.substring(0, 10);
+  const hoja = item.hoja || 1;
+  descargarImagen(item.imagen, `dibujo-${fechaSegura}-hoja${hoja}.png`);
+});
 
 /* ============================================================
    ELIMINAR DEL ÁLBUM
