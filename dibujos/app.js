@@ -1876,6 +1876,16 @@ if (fechaUrl) {
 
 initFirebase();
 
+if (urlParams.get('force') === 'true') {
+  setTimeout(() => {
+    if (firebaseListo) {
+      lastThumbnailTs = 0; // Reseteamos el contador de tiempo para forzar que se guarde
+      guardarThumbnail(); 
+      console.log("🖼️ Miniatura forzada para el álbum");
+    }
+  }, 2500); // Espera 2.5 segundos a que carguen los trazos de la base de datos
+}
+
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { publicarPresencia(); clearTimeout(timeoutThumbnail); guardarThumbnail(); }
   else if (document.visibilityState === "visible") { if (firebaseListo && perfilActual) publicarPresencia(); }

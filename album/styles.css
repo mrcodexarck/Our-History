@@ -15,9 +15,7 @@ body {
   background: radial-gradient(circle at 50% 0%, #2b2521, #12100e 70%);
 }
 
-/* ============================================================
-   HEADER
-============================================================ */
+/* HEADER */
 .app-header {
   position: sticky;
   top: 0;
@@ -61,9 +59,7 @@ body {
   font-family: system-ui, sans-serif;
 }
 
-/* ============================================================
-   CONTENIDO
-============================================================ */
+/* CONTENIDO */
 .album-contenido {
   flex: 1;
   padding: 20px 14px 60px;
@@ -87,9 +83,7 @@ body {
   margin: 0 auto;
 }
 
-/* ============================================================
-   CADA ITEM DEL ÁLBUM
-============================================================ */
+/* TARJETAS */
 .album-card {
   position: relative;
   cursor: pointer;
@@ -97,9 +91,7 @@ body {
   opacity: 0;
   animation: aparecer .5s ease forwards;
 }
-.album-card:hover {
-  transform: translateY(-3px) scale(1.01);
-}
+.album-card:hover { transform: translateY(-3px) scale(1.01); }
 .album-card:active { transform: scale(.98); }
 
 @keyframes aparecer {
@@ -107,43 +99,29 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Marco tipo cuadro */
 .album-marco {
   position: relative;
   background: linear-gradient(180deg, #fefdfa, #f9f4e8);
   border-radius: 3px;
   padding: 10px 10px 40px;
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, .55),
-    0 3px 8px rgba(0, 0, 0, .3),
-    inset 0 0 0 1px rgba(255,255,255,.6);
+  box-shadow: 0 12px 28px rgba(0,0,0,.55), 0 3px 8px rgba(0,0,0,.3), inset 0 0 0 1px rgba(255,255,255,.6);
   transform: rotate(-1deg);
   transition: transform .35s ease, box-shadow .35s ease;
 }
-.album-card:nth-child(even) .album-marco {
-  transform: rotate(1.2deg);
-}
-.album-card:nth-child(3n) .album-marco {
-  transform: rotate(-.5deg);
-}
+.album-card:nth-child(even) .album-marco { transform: rotate(1.2deg); }
+.album-card:nth-child(3n) .album-marco { transform: rotate(-.5deg); }
 .album-card:hover .album-marco {
   transform: rotate(0deg);
-  box-shadow:
-    0 18px 40px rgba(0, 0, 0, .65),
-    0 4px 10px rgba(0, 0, 0, .35),
-    inset 0 0 0 1px rgba(255,255,255,.7);
+  box-shadow: 0 18px 40px rgba(0,0,0,.65), 0 4px 10px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.7);
 }
 
-/* Cintas washi */
-.album-marco::before,
-.album-marco::after {
+.album-marco::before, .album-marco::after {
   content: "";
   position: absolute;
   top: -8px;
-  width: 60px;
-  height: 20px;
+  width: 60px; height: 20px;
   background: linear-gradient(135deg, rgba(217,168,108,.75), rgba(200,150,90,.6));
-  border-left:  1px dashed rgba(255,255,255,.4);
+  border-left: 1px dashed rgba(255,255,255,.4);
   border-right: 1px dashed rgba(255,255,255,.4);
   box-shadow: 0 3px 6px rgba(0,0,0,.25);
   z-index: 2;
@@ -151,7 +129,6 @@ body {
 .album-marco::before { left: 20px; transform: rotate(-7deg); }
 .album-marco::after  { right: 20px; transform: rotate(6deg); }
 
-/* Imagen */
 .album-img {
   width: 100%;
   aspect-ratio: 1;
@@ -161,14 +138,12 @@ body {
   display: block;
 }
 .album-img img {
-  width: 100%;
-  height: 100%;
+  width: 100%; height: 100%;
   object-fit: cover;
   display: block;
   image-rendering: -webkit-optimize-contrast;
 }
 
-/* Leyenda inferior */
 .album-leyenda {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -181,11 +156,7 @@ body {
   color: #7d6c5c;
   font-size: 1.05rem;
 }
-.album-fecha-txt {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.album-fecha-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .album-hoja-badge {
   flex-shrink: 0;
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -197,7 +168,6 @@ body {
   border-radius: 12px;
 }
 
-/* Etiqueta "más reciente" en el primero */
 .album-card:first-child .album-marco::before {
   box-shadow: 0 3px 6px rgba(0,0,0,.25), 0 0 0 0 rgba(217,168,108,.7);
   animation: pulsoNuevo 2s ease-in-out infinite;
@@ -207,20 +177,54 @@ body {
   50%      { box-shadow: 0 3px 6px rgba(0,0,0,.25), 0 0 0 8px rgba(217,168,108,0); }
 }
 
-/* ============================================================
-   LOADING skeleton
-============================================================ */
-.album-cargando {
-  text-align: center;
-  padding: 40px;
-  font-family: "Caveat", cursive;
-  color: rgba(217,168,108,.5);
-  font-size: 1.15rem;
+/* BOTONES EDITAR, ELIMINAR Y DESCARGAR */
+.album-editar, .album-eliminar, .album-descargar {
+  position: absolute;
+  top: 18px;
+  z-index: 5;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(20, 15, 12, .65);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .2s ease, transform .2s ease, background .2s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.album-editar svg, .album-eliminar svg, .album-descargar svg { width: 16px; height: 16px; }
+
+.album-editar { right: 62px; border: 1px solid rgba(217, 168, 108, .5); color: #d9a86c; }
+.album-card:hover .album-editar { opacity: 1; transform: scale(1); }
+.album-editar:hover { background: rgba(217, 168, 108, .9); color: #241c17; border-color: rgba(255, 255, 255, .6); }
+
+.album-eliminar { right: 18px; border: 1px solid rgba(232, 138, 122, .5); color: #e88a7a; }
+.album-card:hover .album-eliminar { opacity: 1; transform: scale(1); }
+.album-eliminar:hover { background: rgba(200, 80, 60, .9); color: #fff; border-color: rgba(255, 255, 255, .6); }
+
+.album-descargar { right: 106px; border: 1px solid rgba(127, 192, 212, .5); color: #7cc0d4; }
+.album-card:hover .album-descargar { opacity: 1; transform: scale(1); }
+.album-descargar:hover { background: rgba(127, 192, 212, .9); color: #241c17; border-color: rgba(255, 255, 255, .6); }
+
+.album-editar:active, .album-eliminar:active, .album-descargar:active { transform: scale(.92); }
+
+@media (hover: none), (pointer: coarse) {
+  .album-editar, .album-eliminar, .album-descargar {
+    opacity: 1;
+    transform: scale(1);
+    width: 40px; height: 40px;
+    top: 14px;
+  }
+  .album-editar { right: 60px; }
+  .album-eliminar { right: 14px; }
+  .album-descargar { right: 106px; }
+  .album-editar svg, .album-eliminar svg, .album-descargar svg { width: 18px; height: 18px; }
 }
 
-/* ============================================================
-   LIGHTBOX
-============================================================ */
+/* LIGHTBOX */
 .lightbox {
   position: fixed;
   inset: 0;
@@ -236,266 +240,84 @@ body {
   animation: fadeIn .25s ease forwards;
 }
 .lightbox[hidden] { display: none; }
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .lb-contenido {
   position: relative;
-  width: 100%;
-  max-width: 900px;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
+  width: 100%; max-width: 900px; max-height: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
-
 .lb-contenido img {
-  max-width: 100%;
-  max-height: 78vh;
+  max-width: 100%; max-height: 78vh;
   object-fit: contain;
   border-radius: 6px;
-  box-shadow:
-    0 30px 90px rgba(0, 0, 0, .8),
-    inset 0 0 0 1px rgba(255,255,255,.1);
+  box-shadow: 0 30px 90px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,255,255,.1);
   animation: zoomIn .35s cubic-bezier(.2,.7,.3,1) both;
 }
+@keyframes zoomIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
 
-@keyframes zoomIn {
-  from { opacity: 0; transform: scale(.9); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.lb-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: #d9a86c;
-  font-family: "Caveat", cursive;
-  font-size: 1.15rem;
-}
-.lb-autor {
-  padding: 2px 12px;
-  background: rgba(217,168,108,.15);
-  border-radius: 20px;
-  font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: .95rem;
-  font-weight: 600;
-}
-
+.lb-info { display: flex; align-items: center; gap: 16px; color: #d9a86c; font-family: "Caveat", cursive; font-size: 1.15rem; }
+.lb-autor { padding: 2px 12px; background: rgba(217,168,108,.15); border-radius: 20px; font-family: "Cormorant Garamond", Georgia, serif; font-size: .95rem; font-weight: 600; }
 .lb-cerrar {
-  position: absolute;
-  top: 20px; right: 20px;
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(217,168,108,.4);
-  color: #f0e2c8;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background .2s, transform .2s;
-  z-index: 10;
+  position: absolute; top: 20px; right: 20px;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(217,168,108,.4);
+  color: #f0e2c8; font-size: 1.1rem; cursor: pointer;
+  display: grid; place-items: center; transition: background .2s, transform .2s; z-index: 10;
 }
-.lb-cerrar:hover {
-  background: rgba(217,168,108,.25);
-  transform: rotate(90deg);
-}
+.lb-cerrar:hover { background: rgba(217,168,108,.25); transform: rotate(90deg); }
 
-.lb-flechas {
-  display: flex;
-  gap: 14px;
-}
+.lb-flechas { display: flex; gap: 14px; }
 .lb-nav {
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(217,168,108,.4);
-  color: #f0e2c8;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  padding-bottom: 4px;
-  transition: background .2s, transform .2s;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(217,168,108,.4);
+  color: #f0e2c8; font-size: 1.5rem; cursor: pointer;
+  display: grid; place-items: center; padding-bottom: 4px; transition: background .2s, transform .2s;
 }
-.lb-nav:hover {
-  background: rgba(217,168,108,.25);
-  transform: scale(1.08);
-}
-.lb-nav:disabled {
-  opacity: .25;
-  cursor: not-allowed;
-}
-.lb-nav:disabled:hover {
-  transform: none;
-  background: rgba(255,255,255,.08);
-}
+.lb-nav:hover { background: rgba(217,168,108,.25); transform: scale(1.08); }
+.lb-nav:disabled { opacity: .25; cursor: not-allowed; }
+.lb-nav:disabled:hover { transform: none; background: rgba(255,255,255,.08); }
 
-/* ============================================================
-   RESPONSIVE
-============================================================ */
-@media (min-width: 640px) {
-  .album-feed {
-    gap: 28px;
-    padding: 10px 0;
-  }
-  .album-marco {
-    padding: 14px 14px 48px;
-  }
-}
-
-/* ============================================================
-   BOTÓN EDITAR Y ELIMINAR EN CADA TARJETA
-============================================================ */
-.album-editar,
-.album-eliminar {
-  position: absolute;
-  top: 18px;
-  z-index: 5;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(20, 15, 12, .65);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  opacity: 0;
-  transform: scale(.85);
-  transition: opacity .2s ease, transform .2s ease, background .2s ease;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.album-editar svg,
-.album-eliminar svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Botón Editar (Izquierda) */
-.album-editar {
-  right: 62px;
-  border: 1px solid rgba(217, 168, 108, .5);
-  color: #d9a86c;
-}
-.album-card:hover .album-editar {
-  opacity: 1;
-  transform: scale(1);
-}
-.album-editar:hover {
-  background: rgba(217, 168, 108, .9);
-  color: #241c17;
-  border-color: rgba(255, 255, 255, .6);
-}
-
-/* Botón Eliminar (Derecha) */
-.album-eliminar {
-  right: 18px;
-  border: 1px solid rgba(232, 138, 122, .5);
-  color: #e88a7a;
-}
-.album-card:hover .album-eliminar {
-  opacity: 1;
-  transform: scale(1);
-}
-.album-eliminar:hover {
-  background: rgba(200, 80, 60, .9);
-  color: #fff;
-  border-color: rgba(255, 255, 255, .6);
-}
-
-.album-editar:active,
-.album-eliminar:active {
-  transform: scale(.92);
-}
-
-/* En móvil y touch, siempre visible */
-@media (hover: none), (pointer: coarse) {
-  .album-editar,
-  .album-eliminar {
-    opacity: 1;
-    transform: scale(1);
-    width: 40px;
-    height: 40px;
-    top: 14px;
-  }
-  
-  .album-editar { right: 60px; }
-  .album-eliminar { right: 14px; }
-
-  .album-editar svg,
-  .album-eliminar svg {
-    width: 18px;
-    height: 18px;
-  }
-}
-
-/* ============================================================
-   BOTÓN DE DESCARGA
-============================================================ */
-.album-descargar {
-  position: absolute;
-  top: 18px;
-  right: 106px; /* Lo posicionamos a la izquierda del botón editar */
-  z-index: 5;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(20, 15, 12, .65);
-  border: 1px solid rgba(127, 192, 212, .5);
-  color: #7cc0d4;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  opacity: 0;
-  transform: scale(.85);
-  transition: opacity .2s ease, transform .2s ease, background .2s ease;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-.album-descargar svg { width: 16px; height: 16px; }
-.album-card:hover .album-descargar { opacity: 1; transform: scale(1); }
-.album-descargar:hover {
-  background: rgba(127, 192, 212, .9);
-  color: #241c17;
-  border-color: rgba(255, 255, 255, .6);
-}
-
-/* Estilo del botón de descarga en el Lightbox */
 .lb-descargar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(127, 192, 212, .4);
-  color: #7cc0d4;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: background .2s, transform .2s;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(127, 192, 212, .4);
+  color: #7cc0d4; display: grid; place-items: center; cursor: pointer; transition: background .2s, transform .2s;
 }
-.lb-descargar:hover {
-  background: rgba(127, 192, 212, .25);
-  transform: scale(1.08);
-}
+.lb-descargar:hover { background: rgba(127, 192, 212, .25); transform: scale(1.08); }
 .lb-descargar svg { width: 20px; height: 20px; }
 
-/* Ajustes para móvil (hacerlos siempre visibles) */
-@media (hover: none), (pointer: coarse) {
-  .album-descargar {
-    opacity: 1;
-    transform: scale(1);
-    width: 40px;
-    height: 40px;
-    top: 14px;
-    right: 104px; /* Ajuste de espacio en móvil */
-  }
-  .album-descargar svg { width: 18px; height: 18px; }
+/* MODAL FECHA OLVIDADA */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10, 8, 6, .9); backdrop-filter: blur(8px);
+  display: grid; place-items: center; padding: 20px; z-index: 1000;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-card {
+  width: 100%; max-width: 380px;
+  background: linear-gradient(160deg, rgba(87,57,42,.95), rgba(46,28,19,.98));
+  border: 1px solid rgba(217,168,108,.35); border-radius: 20px;
+  padding: 28px 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.8);
+}
+.modal-title { font-family: "Playfair Display", Georgia, serif; font-size: 1.4rem; color: #f0e2c8; margin-bottom: 6px; }
+.modal-sub { font-family: "Caveat", cursive; font-size: 1.2rem; color: #d9a86c; margin-bottom: 20px; }
+.field { display: block; margin-bottom: 20px; text-align: left; }
+.field span { display: block; font-family: system-ui, sans-serif; font-size: 0.75rem; text-transform: uppercase; color: rgba(217,168,108,.8); margin-bottom: 6px; letter-spacing: 1px; }
+.field input {
+  width: 100%; padding: 12px 14px; font-family: system-ui, sans-serif; font-size: 1rem;
+  color: #f0e2c8; background: rgba(0,0,0,.3); border: 1px solid rgba(217,168,108,.3); border-radius: 10px; outline: none;
+}
+.modal-acciones { display: flex; gap: 10px; }
+.btn-cancelar, .btn-ir {
+  flex: 1; padding: 12px; border-radius: 30px;
+  font-family: "Cormorant Garamond", Georgia, serif; font-size: 1rem; font-weight: 600; cursor: pointer; transition: transform 0.2s;
+}
+.btn-cancelar { background: transparent; border: 1px solid rgba(217,168,108,.3); color: #c9b48e; }
+.btn-cancelar:active { transform: scale(0.98); }
+.btn-ir { background: linear-gradient(135deg, #e0b87e, #c9985a); border: none; color: #2a1d12; }
+.btn-ir:active { transform: scale(0.98); }
+
+@media (min-width: 640px) {
+  .album-feed { gap: 28px; padding: 10px 0; }
+  .album-marco { padding: 14px 14px 48px; }
 }

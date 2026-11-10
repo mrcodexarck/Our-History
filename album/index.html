@@ -20,7 +20,11 @@
     <span class="fecha-dia">Nuestro Álbum</span>
     <span class="fecha-anio" id="contador">—</span>
   </div>
-  <div class="icon-btn placeholder"></div>
+  
+  <!-- BOTÓN PARA CREAR DÍA OLVIDADO -->
+  <button type="button" class="icon-btn" id="btn-crear-dia" aria-label="Crear día olvidado" style="display: none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
 </header>
 
 <main class="album-contenido">
@@ -46,7 +50,7 @@
     </div>
     <div class="lb-flechas">
       <button type="button" class="lb-nav" id="lb-prev" aria-label="Anterior">‹</button>
-        <!-- 🆕 BOTÓN DE DESCARGA EN EL LIGHTBOX -->
+      <!-- BOTÓN DE DESCARGA EN EL LIGHTBOX -->
       <button type="button" class="lb-descargar" id="lb-descargar" aria-label="Descargar imagen" title="Guardar en galería">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -55,6 +59,24 @@
         </svg>
       </button>
       <button type="button" class="lb-nav" id="lb-next" aria-label="Siguiente">›</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA ELEGIR FECHA OLVIDADA -->
+<div class="modal-overlay" id="modal-fecha" hidden>
+  <div class="modal-card">
+    <h2 class="modal-title">Recuperar un día</h2>
+    <p class="modal-sub">¿Qué día se nos olvidó dibujar?</p>
+    
+    <label class="field">
+      <span>Selecciona la fecha</span>
+      <input type="date" id="input-fecha-olvidada">
+    </label>
+
+    <div class="modal-acciones">
+      <button type="button" class="btn-cancelar" id="btn-cancelar-fecha">Cancelar</button>
+      <button type="button" class="btn-ir" id="btn-ir-a-dibujar">Ir a dibujar</button>
     </div>
   </div>
 </div>

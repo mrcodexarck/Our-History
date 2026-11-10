@@ -2,13 +2,7 @@
    IMPORTS
 ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  onSnapshot,
-  doc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
 
@@ -20,7 +14,7 @@ if (sessionStorage.getItem("acceso-libro") !== "ok") {
 }
 
 /* ============================================================
-   FIREBASE (RESTAURADO A LO ESTÁNDAR)
+   FIREBASE
 ============================================================ */
 const app  = initializeApp(FIREBASE_CONFIG);
 const db   = getFirestore(app);
@@ -88,39 +82,22 @@ function renderizar() {
 
     const fechaSegura = item.fecha || item.id.substring(0, 10);
     const fechaFmt = formatearFecha(fechaSegura);
-    
-    const esHoja1 = item.hoja === 1;
-    const labelHoja = esHoja1 ? "Hoja 1" : "Hoja 2";
+    const labelHoja = item.hoja === 1 ? "Hoja 1" : "Hoja 2";
 
     card.innerHTML = `
       <div class="album-marco">
         <div class="album-img">
           <img src="${item.imagen}" alt="Dibujo del ${fechaFmt}" loading="lazy">
         </div>
-        
-        <!-- 🆕 BOTÓN DE DESCARGA EN LA TARJETA -->
         <button type="button" class="album-descargar" aria-label="Descargar imagen" title="Guardar en galería">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-
         <button type="button" class="album-editar" aria-label="Editar dibujo" title="Editar dibujo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20h9"></path>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
         </button>
-        
         <button type="button" class="album-eliminar" aria-label="Eliminar dibujo" title="Eliminar del álbum">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
-        
         <div class="album-leyenda">
           <span class="album-fecha-txt">${fechaFmt}</span>
           <span class="album-hoja-badge">${labelHoja}</span>
@@ -129,7 +106,7 @@ function renderizar() {
     `;
 
     card.addEventListener("click", (e) => {
-      if (e.target.closest(".album-eliminar") || e.target.closest(".album-editar")) return; 
+      if (e.target.closest(".album-eliminar") || e.target.closest(".album-editar") || e.target.closest(".album-descargar")) return; 
       abrirLightbox(idx);
     });
 
@@ -137,7 +114,8 @@ function renderizar() {
     btnEditar.addEventListener("click", (e) => {
       e.stopPropagation();
       const hoja = item.hoja || 1;
-      window.location.href = `../dibujos/index.html?fecha=${fechaSegura}&hoja=${hoja}`;
+      // 👇 AÑADIMOS &force=true PARA FORZAR EL GUARDADO EN EL LIENZO
+      window.location.href = `../dibujos/index.html?fecha=${fechaSegura}&hoja=${hoja}&force=true`;
     });
 
     const btnEliminar = card.querySelector(".album-eliminar");
@@ -176,14 +154,9 @@ function cerrarLightbox() {
 function actualizarLightbox() {
   const itemsValidos = items.filter(i => i && i.imagen);
   const item = itemsValidos[idxActual];
-  
-  if (!item) {
-    cerrarLightbox();
-    return;
-  }
+  if (!item) { cerrarLightbox(); return; }
 
   lbImg.src = item.imagen;
-  
   const fechaSegura = item.fecha || item.id.substring(0, 10);
   lbFecha.textContent = formatearFecha(fechaSegura);
   lbAutor.textContent = nombreAutor(item.autor);
@@ -204,9 +177,7 @@ function irA(delta) {
    EVENT LISTENERS (LIGHTBOX)
 ============================================================ */
 lbCerrar.addEventListener("click", cerrarLightbox);
-lightbox.addEventListener("click", e => {
-  if (e.target === lightbox) cerrarLightbox();
-});
+lightbox.addEventListener("click", e => { if (e.target === lightbox) cerrarLightbox(); });
 lbPrev.addEventListener("click", e => { e.stopPropagation(); irA(-1); });
 lbNext.addEventListener("click", e => { e.stopPropagation(); irA(+1); });
 
@@ -218,9 +189,7 @@ document.addEventListener("keydown", e => {
 });
 
 let lbX0 = null;
-lightbox.addEventListener("touchstart", e => {
-  lbX0 = e.touches[0].clientX;
-}, { passive: true });
+lightbox.addEventListener("touchstart", e => { lbX0 = e.touches[0].clientX; }, { passive: true });
 lightbox.addEventListener("touchend", e => {
   if (lbX0 === null) return;
   const dx = e.changedTouches[0].clientX - lbX0;
@@ -234,14 +203,11 @@ lightbox.addEventListener("touchend", e => {
 async function initFirebase() {
   try {
     await signInAnonymously(auth);
-
     const ref = collection(db, "parejas", PAREJA_ID, "album");
 
     onSnapshot(ref, snap => {
       const nuevos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
       nuevos.sort((a, b) => b.id.localeCompare(a.id));
-
       items = nuevos;
       renderizar();
       console.log(`🖼️ ${items.length} dibujos cargados`);
@@ -250,14 +216,12 @@ async function initFirebase() {
       vacio.hidden = false;
       vacio.textContent = "No se pudieron cargar los dibujos 😢. Revisa tu conexión.";
     });
-
   } catch (err) {
     console.error("❌ Error Firebase Auth:", err);
     vacio.hidden = false;
     vacio.textContent = "Error de conexión con la base de datos.";
   }
 }
-
 initFirebase();
 
 /* ============================================================
@@ -277,22 +241,15 @@ document.getElementById("lb-descargar")?.addEventListener("click", (e) => {
   const itemsValidos = items.filter(i => i && i.imagen);
   const item = itemsValidos[idxActual];
   if (!item) return;
-  
   const fechaSegura = item.fecha || item.id.substring(0, 10);
-  const hoja = item.hoja || 1;
-  descargarImagen(item.imagen, `dibujo-${fechaSegura}-hoja${hoja}.png`);
+  descargarImagen(item.imagen, `dibujo-${fechaSegura}-hoja${item.hoja || 1}.png`);
 });
 
 /* ============================================================
    ELIMINAR DEL ÁLBUM
 ============================================================ */
 async function eliminarDelAlbum(item, btnEl, fechaFmt, labelHoja) {
-  const confirmar = confirm(
-    `¿Eliminar este dibujo del álbum?\n\n` +
-    `📅 ${fechaFmt}\n` +
-    `📄 ${labelHoja}\n\n` +
-    `Se quitará del álbum. El dibujo seguirá existiendo en el módulo de dibujos.`
-  );
+  const confirmar = confirm(`¿Eliminar este dibujo del álbum?\n\n📅 ${fechaFmt}\n📄 ${labelHoja}\n\nSe quitará del álbum. El dibujo seguirá existiendo en el módulo de dibujos.`);
   if (!confirmar) return;
 
   btnEl.disabled = true;
@@ -308,3 +265,38 @@ async function eliminarDelAlbum(item, btnEl, fechaFmt, labelHoja) {
     btnEl.style.opacity = "";
   }
 }
+
+/* ============================================================
+   LÓGICA PARA CREAR DÍA OLVIDADO (Ambos usuarios)
+============================================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  const btnCrearDia = document.getElementById("btn-crear-dia");
+  const modalFecha = document.getElementById("modal-fecha");
+  const inputFecha = document.getElementById("input-fecha-olvidada");
+  const btnCancelarFecha = document.getElementById("btn-cancelar-fecha");
+  const btnIrADibujar = document.getElementById("btn-ir-a-dibujar");
+
+  if (btnCrearDia) btnCrearDia.style.display = "grid";
+
+  const hoy = new Date();
+  const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`;
+  if (inputFecha) inputFecha.max = hoyStr;
+
+  btnCrearDia?.addEventListener("click", () => {
+    if (!modalFecha) return;
+    modalFecha.hidden = false;
+    if (inputFecha) inputFecha.value = hoyStr;
+  });
+
+  const cerrarModal = () => { if (modalFecha) modalFecha.hidden = true; };
+  btnCancelarFecha?.addEventListener("click", cerrarModal);
+  modalFecha?.addEventListener("click", (e) => { if (e.target === modalFecha) cerrarModal(); });
+
+  btnIrADibujar?.addEventListener("click", () => {
+    const fechaElegida = inputFecha.value;
+    if (!fechaElegida) { alert("Por favor, selecciona una fecha."); return; }
+    
+    // 👇 AÑADIMOS &force=true AQUÍ TAMBIÉN
+    window.location.href = `../dibujos/index.html?fecha=${fechaElegida}&hoja=1&force=true`;
+  });
+});
