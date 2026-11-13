@@ -10,7 +10,7 @@ import { FIREBASE_CONFIG, PAREJA_ID } from "../citas/firebase-config.js";
    ⚠️ CONFIGURACIÓN DE SPOTIFY
 ============================================================ */
 const SPOTIFY_CLIENT_ID = "7c1083ac6f59422287c7da3cc69b7076"; 
-const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/'); 
+const REDIRECT_URI = "https://mrcodexarck.github.io/Our-History/canciones/index.html";
 const SCOPES = "streaming user-read-email user-read-private user-modify-playback-state";
 
 /* ============================================================
