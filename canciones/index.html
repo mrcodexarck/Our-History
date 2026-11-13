@@ -25,6 +25,11 @@
 
 <main class="music-content">
 
+  <!-- Botón de conexión con Spotify (se oculta si ya hay token) -->
+  <button id="btn-spotify-login" class="btn-spotify-login" style="display:none;">
+    🎧 Conectar con Spotify para reproducir
+  </button>
+
   <!-- REPRODUCTOR PRINCIPAL CON VINILO -->
   <div class="player-container" id="player-container" hidden>
     <div class="player-vinyl" id="player-vinyl">
@@ -53,7 +58,7 @@
     
     <!-- BUSCADOR -->
     <label class="field">
-      <span>Buscar canción (YouTube)</span>
+      <span>Buscar canción (Spotify)</span>
       <div style="display: flex; gap: 8px;">
         <input type="text" id="input-search" placeholder="Ej: Morat - Cuando nadie ve" style="flex: 1;">
         <button type="button" id="btn-search" style="padding: 0 16px; background: #d9a86c; border: none; border-radius: 10px; cursor: pointer; color: #2a1d12; font-weight: bold;">🔍</button>
@@ -66,9 +71,10 @@
     </div>
 
     <!-- CAMPOS OCULTOS (Se llenan al elegir canción) -->
-    <input type="hidden" id="selected-url">
+    <input type="hidden" id="selected-uri">
     <input type="hidden" id="selected-title">
     <input type="hidden" id="selected-artist">
+    <input type="hidden" id="selected-cover">
 
     <!-- CANCIÓN SELECCIONADA -->
     <div id="selected-song-display" style="display: none; text-align: center; margin-bottom: 14px; padding: 10px; background: rgba(217,168,108,0.1); border-radius: 10px; border: 1px dashed #d9a86c;">
@@ -84,10 +90,8 @@
   </div>
 </div>
 
-<!-- Contenedor oculto para la API de YouTube -->
-<div id="youtube-api-player" style="position: fixed; top: -9999px; left: -9999px; width: 200px; height: 200px;"></div>
-
-<script src="https://www.youtube.com/iframe_api"></script>
+<!-- SDK de Spotify -->
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
 <script type="module" src="app.js"></script>
 <script src="/navidad.js"></script>
 

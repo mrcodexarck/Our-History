@@ -81,6 +81,24 @@ body {
   line-height: 1.6;
 }
 
+/* BOTÓN DE CONEXIÓN SPOTIFY */
+.btn-spotify-login {
+  width: 100%;
+  padding: 14px;
+  background: #1DB954;
+  color: #fff;
+  border: none;
+  border-radius: 30px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  margin-bottom: 10px;
+}
+.btn-spotify-login:active { transform: scale(0.98); }
+.btn-spotify-login:hover { background: #1ed760; }
+
 /* REPRODUCTOR PRINCIPAL */
 .player-container {
   display: flex;
@@ -220,6 +238,7 @@ body {
 .song-card:hover .song-thumb::after { opacity: 1; }
 
 .song-details {
+  flex: 1; /* Hace que el texto empuje el botón de eliminar a la derecha */
   min-width: 0;
 }
 .song-title {
@@ -241,6 +260,28 @@ body {
   font-size: 0.9rem;
   color: #b58a5a;
   margin-top: 2px;
+}
+
+/* BOTÓN DE ELIMINAR */
+.btn-delete-song {
+  background: transparent;
+  border: none;
+  color: rgba(217, 168, 108, 0.4);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-delete-song:hover {
+  color: #ff6b6b; /* Rojo suave al pasar el ratón */
+  background: rgba(255, 107, 107, 0.1);
+  transform: scale(1.1);
 }
 
 /* RESULTADOS DE BÚSQUEDA */
